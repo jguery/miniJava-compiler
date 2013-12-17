@@ -5,8 +5,14 @@ type binop =
 type unop =
   | Udiff | Uminus
 
-type class = { name : string; parent : class; core : attr_or_method list }
+type classname =
+  | Classname of string (* Name of a class, which has to be defined, otherwise the compiler will fail (later)  *)
 
-type compile_tree = 
-  | Class of class
+type attr_or_method = 
+  | Attr of classname * string
+
+type class_or_expr = 
+  | Classdef of string * attr_or_method list (* No parent: Object class *)
+  | ClassdefWithParent of string * classname * attr_or_method list
+
   (* | Expression of expression *)
