@@ -1,0 +1,7 @@
+class A extends B {
+	Int i = 10;
+	String s = "foobar";
+	Boolean b = true;
+	String d = null;
+	A a = this;
+}

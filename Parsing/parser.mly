@@ -3,9 +3,10 @@
 %}
 
 
-%token EOF CLASS EXTENDS OBRAK FBRAK PTVIRGULE
+%token EOF CLASS EXTENDS OBRAK FBRAK PTVIRGULE AFFECT NULL THIS QUOTE
 %token <string> STRING UIDENT LIDENT
 %token <int> INT
+%token <bool> BOOLEAN
 
 %start compile_list
 %type <Types.class_or_expr list> compile_list
@@ -28,5 +29,16 @@ attr_or_method:
 
 attribute:
  | t=UIDENT n=LIDENT PTVIRGULE { Attr(Classname(t), n) }
+ | t=UIDENT n=LIDENT AFFECT e=expr PTVIRGULE { AttrWithValue(Classname(t), n, e) }
+
+expr:
+ | i=INT { Int(i) }
+ | b=BOOLEAN { Boolean(b) } 
+ | s=STRING { String(s) }
+ | NULL { Null }
+ | THIS { This }
+
+string:
+ | QUOTE s=STRING QUOTE { s }
 
 %%
