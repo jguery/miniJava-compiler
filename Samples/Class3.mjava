@@ -1,0 +1,2 @@
+class A { Int x; Boolean b; }
+class B extends A { String str; }
