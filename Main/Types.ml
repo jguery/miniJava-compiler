@@ -1,3 +1,5 @@
+open Located
+
 type binop =
   | Bptvirg | Binf | BinfEq | Bsup | Bsupeq | Bdiff | Beq 
   | Badd | Bsub | Bmul | Bdiv | Bmod | Band | Bor
@@ -6,7 +8,7 @@ type unop =
   | Udiff | Uminus
 
 type classname =
-  | Classname of string (* Name of a class, which has to be defined, otherwise the compiler will fail (later)  *)
+  | Classname of string t (* Name of a class, which has to be defined, otherwise the compiler will fail (later)  *)
 
 type expr = 
   | Int of int 

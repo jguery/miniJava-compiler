@@ -2,10 +2,11 @@ open Parser
 open Types
 open Errors
 open Location
+open Located
 open Expr
 
 let string_of_classname = function
-	| Classname cn -> cn
+	| Classname cn -> Located.elem_of cn
 
 let rec string_of_expr = function
 	| Int i -> string_of_int i

@@ -2,6 +2,7 @@
   open Types
   open Errors
   open Location
+  open Located
 %}
 
 
@@ -15,6 +16,9 @@
 
 %%
 
+loc(X) :
+ | x = X { Located.mk_elem x (Location.symbol_loc $startpos $endpos) }
+
 compile_list:
  | e=class_or_expr* EOF { e }
  | error { raise (Errors.PError (Errors.SyntaxError, (Location.symbol_loc $startpos $endpos))) }
@@ -24,15 +28,15 @@ class_or_expr:
  /* | e=expr {e} */
 
 classdef:
- | CLASS n=UIDENT EXTENDS p=UIDENT OBRAK l=attr_or_method* FBRAK { ClassdefWithParent(n, Classname(p), l) }
+ | CLASS n=UIDENT EXTENDS p=loc(UIDENT) OBRAK l=attr_or_method* FBRAK { ClassdefWithParent(n, Classname(p), l) }
  | CLASS n=UIDENT OBRAK l=attr_or_method* FBRAK { Classdef(n, l) }
 
 attr_or_method:
  | a=attribute { a }
 
 attribute:
- | t=UIDENT n=LIDENT PTVIRGULE { Attr(Classname(t), n) }
- | t=UIDENT n=LIDENT AFFECT e=expr PTVIRGULE { AttrWithValue(Classname(t), n, e) }
+ | t=loc(UIDENT) n=LIDENT PTVIRGULE { Attr(Classname(t), n) }
+ | t=loc(UIDENT) n=LIDENT AFFECT e=expr PTVIRGULE { AttrWithValue(Classname(t), n, e) }
 
 expr:
  | i=INT { Int(i) }
