@@ -1,9 +1,11 @@
 %{
   open Types
+  open Errors
+  open Location
 %}
 
 
-%token EOF CLASS EXTENDS OBRAK FBRAK PTVIRGULE AFFECT NULL THIS QUOTE
+%token EOF CLASS EXTENDS OBRAK FBRAK PTVIRGULE AFFECT NULL THIS
 %token <string> STRING UIDENT LIDENT
 %token <int> INT
 %token <bool> BOOLEAN
@@ -15,6 +17,7 @@
 
 compile_list:
  | e=class_or_expr* EOF { e }
+ | error { raise (Errors.PError (Errors.SyntaxError, (Location.symbol_loc $startpos $endpos))) }
 
 class_or_expr:
  | c=classdef {c} 
@@ -25,7 +28,7 @@ classdef:
  | CLASS n=UIDENT OBRAK l=attr_or_method* FBRAK { Classdef(n, l) }
 
 attr_or_method:
- | a=attribute {a}
+ | a=attribute { a }
 
 attribute:
  | t=UIDENT n=LIDENT PTVIRGULE { Attr(Classname(t), n) }
@@ -37,8 +40,5 @@ expr:
  | s=STRING { String(s) }
  | NULL { Null }
  | THIS { This }
-
-string:
- | QUOTE s=STRING QUOTE { s }
 
 %%

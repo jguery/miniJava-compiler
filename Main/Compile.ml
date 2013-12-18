@@ -1,5 +1,7 @@
 open Parser
 open Types
+open Errors
+open Location
 open Expr
 
 let string_of_classname = function
@@ -37,9 +39,9 @@ let execute lexbuf verbose =
 	    print_newline();
 	    (* D'autres opérations *)
 	    exit 0
-  with Parser.Error ->
-  	(* Handle syntax errors *)
-  	print_endline "Syntax Error :";
-  	Location.print (Location.curr lexbuf);
+  with PError (e, t) ->
+  	(* Handle errors errors *)
+  	Location.print t;
+  	print_endline (Errors.string_of_error e);
     print_endline (Lexing.lexeme lexbuf);
     exit (-1)
