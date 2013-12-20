@@ -21,8 +21,16 @@
 %start compile_list
 %type <Types.class_or_expr Located.t list> compile_list
 
-/*%left PLUS MINUS
-%left TIMES DIV MOD*/
+%left EXPR 	/* The definition of an expression is prioritary to the definition of a new one */
+%left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
+%left DEFATTR
+%left PTVIRGULE		/* Allows to link expressions before definition a new one (in compile_list) */
+%left MINUS PLUS 	/* The usual calc precedence levels */
+%left TIMES DIV MOD
+%left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
+%left BOPS		/* Goes with EXPR: in priority we add, or divide, etc... expressions before defining a new one. */
+%right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
+
 
 %%
 
@@ -38,7 +46,7 @@ compile_list:
 
 class_or_expr:
  | c=classdef { c } 
- | e=loc(expr) { Expr(e) }
+ | e=loc(expr) %prec EXPR { Expr(e) }
 
 classdef:
  | CLASS n=loc(UIDENT) EXTENDS p=loc(classname) LBRAK l=loc(attr_or_method)* RBRAK 
@@ -50,7 +58,7 @@ classname:
  | n=loc(UIDENT) { Classname(n) }
 
 attr_or_method:
- | a=attribute { a }
+ | a=attribute %prec DEFATTR { a }
 
 attribute:
  | t=loc(classname) n=loc(LIDENT) PTVIRGULE { Attr(t, n) }
@@ -62,14 +70,14 @@ expr:
  | s=loc(STRING) { String(s) }
  | NULL { Null }
  | THIS { This }
- | u=loc(unop) e=loc(expr) { Unop(u, e) }
- | e1=loc(expr) b=loc(bop) e2=loc(expr) { Binop(b, e1, e2) }
- | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) 
+ | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
+ | e1=loc(expr) b=loc(bop) e2=loc(expr) %prec BOPS { Binop(b, e1, e2) }
+ | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
  	{ Instance(t, n, e1, e2) }
 
 unop:
  | DIFF 	{ Udiff }
- | MINUS 	{ Uminus }
+ | MINUS  	{ Uminus }
 
 %inline bop:
  | PTVIRGULE { Bptvirg }
@@ -78,13 +86,13 @@ unop:
  | SUP		{ Bsup }
  | SUPEQ	{ Bsupeq }
  | DIFFEQ	{ Bdiff }
- | EQUALS	{ Beq } 
+ | EQUALS	{ Beq }
  | MINUS    { Bsub }
  | PLUS     { Badd }
  | TIMES    { Bmul }
  | DIV      { Bdiv }
  | MOD      { Bmod }
- | AND		{ Band }
- | OR 		{ Bor }
+ /*| AND		{ Band }
+ | OR 		{ Bor }*/
 
 %%

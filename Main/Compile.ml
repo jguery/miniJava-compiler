@@ -10,7 +10,7 @@ let string_of_unop u = match u with
 	| Uminus -> "minus "
 
 let string_of_bop b = match b with
-	| Bptvirg -> "; "
+	| Bptvirg -> " PTVIRG "
 	| Binf -> " INF "
 	| BinfEq -> " INFEQ "
 	| Bsup -> " SUP "
