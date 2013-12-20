@@ -20,18 +20,34 @@ rule nexttoken = parse
   | eof           { EOF }
   | "class"	{ CLASS }
   | "extends" { EXTENDS }
-  | "{" { OBRAK }
-  | "}" { FBRAK }
-  | ";" { PTVIRGULE }
-  | "=" { AFFECT }
   | "true" { BOOLEAN true }
   | "false" { BOOLEAN false }
   | "null" { NULL }
   | "this" { THIS }
+  | "in" { IN }
   | "\"" { parsestring "" lexbuf }
+  | "{" { LBRAK }
+  | "}" { RBRAK }
+  | "!" { DIFF }
+  | "-" { MINUS }
+  | "+" { PLUS } 
+  | "*" { TIMES }
+  | "/" { DIV }
+  | "%" { MOD }
+  | "&&" { AND }
+  | "||" { OR } 
+  | "!=" { DIFFEQ }
+  | "==" { EQUALS }
+  | ">=" { SUPEQ }
+  | ">" { SUP }
+  | "<=" { INFEQ }
+  | "<" { INF } 
+  | "=" { AFFECT }
+  | ";" { PTVIRGULE }
   | digit+ as nb  { INT (int_of_string nb) }
   | uident         { UIDENT (Lexing.lexeme lexbuf) }
   | lident { LIDENT (Lexing.lexeme lexbuf) }
+
 
 and parsestring res = parse
   | str as s { parsestring s lexbuf }

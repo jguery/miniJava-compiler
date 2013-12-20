@@ -4,4 +4,6 @@ class A extends B {
 	Boolean b = true;
 	String d = null;
 	A a = this;
+	B b = 
+		C c = false in 10;
 }

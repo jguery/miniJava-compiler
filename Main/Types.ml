@@ -5,26 +5,32 @@ type binop =
   | Badd | Bsub | Bmul | Bdiv | Bmod | Band | Bor
 
 type unop =
-  | Udiff | Uminus
+  | Udiff 
+  | Uminus
 
 type classname =
-  | Classname of string t (* Name of a class, which has to be defined, otherwise the compiler will fail (later)  *)
+  | Classname of string Located.t (* Name of a class, which has to be defined, otherwise the compiler will fail (later)  *)
+  (*| IntType 
+  | BooleanType
+  | StringType *)
 
 type expr = 
-  | Int of int 
-  | Boolean of bool
-  | String of string
+  | Int of int Located.t
+  | Boolean of bool Located.t
+  | String of string Located.t
   | Null
   | This
-  | Unop of unop * expr
-  | Binop of binop * expr
+  | Unop of unop Located.t * expr Located.t
+  | Binop of binop Located.t * expr Located.t * expr Located.t
+  | Instance of classname Located.t * string Located.t * expr Located.t * expr Located.t
 
 type attr_or_method = 
-  | Attr of classname * string
-  | AttrWithValue of classname * string * expr
+  | Attr of classname Located.t * string Located.t
+  | AttrWithValue of classname Located.t * string Located.t * expr Located.t
 
 type class_or_expr = 
-  | Classdef of string * attr_or_method list (* No parent: Object class *)
-  | ClassdefWithParent of string * classname * attr_or_method list
+  | Classdef of string Located.t * attr_or_method Located.t list (* No parent, the parent is the Object class *)
+  | ClassdefWithParent of string Located.t * classname Located.t * attr_or_method Located.t list
+  | Expr of expr Located.t
 
   (* | Expression of expression *)
