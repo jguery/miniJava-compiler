@@ -21,12 +21,13 @@
 %start compile_list
 %type <Types.class_or_expr Located.t list> compile_list
 
-%left EXPR 	/* The definition of an expression is prioritary to the definition of a new one */
+%left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
-%left DEFATTR
-%left PTVIRGULE		/* Allows to link expressions before definition a new one (in compile_list) */
+%left PTVIRGULE		/* Allows to link expressions before defining a new one (in compile_list) */
 %left MINUS PLUS 	/* The usual calc precedence levels */
 %left TIMES DIV MOD
+%left OR
+%left AND
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
 %left BOPS		/* Goes with EXPR: in priority we add, or divide, etc... expressions before defining a new one. */
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
@@ -58,9 +59,6 @@ classname:
  | n=loc(UIDENT) { Classname(n) }
 
 attr_or_method:
- | a=attribute %prec DEFATTR { a }
-
-attribute:
  | t=loc(classname) n=loc(LIDENT) PTVIRGULE { Attr(t, n) }
  | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) PTVIRGULE { AttrWithValue(t, n, e) }
 
@@ -92,7 +90,7 @@ unop:
  | TIMES    { Bmul }
  | DIV      { Bdiv }
  | MOD      { Bmod }
- /*| AND		{ Band }
- | OR 		{ Bor }*/
+ | AND		{ Band }
+ | OR 		{ Bor }
 
 %%
