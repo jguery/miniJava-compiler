@@ -3,6 +3,9 @@
   open Errors
   open Location
   open Located
+
+  let string_of_classname = function
+	| Classname cn -> Located.elem_of cn
 %}
 
 %token EOF
@@ -21,6 +24,7 @@
 %start compile_list
 %type <Types.class_or_expr Located.t list> compile_list
 
+%left UIDENT
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
 %left PTVIRGULE		/* Allows to link expressions before defining a new one (in compile_list) */
@@ -42,7 +46,7 @@ loc(X) :
 compile_list:
  | e=loc(class_or_expr)* EOF { e }
  | error /* This rule is automatically detected by menhir when the 
- 			current token doesn't correspond to the grammar */
+ 			current token doesn't fit in the grammar */
  	{ raise (Errors.PError (Errors.SyntaxError, (Location.symbol_loc $startpos $endpos))) }
 
 class_or_expr:
@@ -59,7 +63,8 @@ classname:
  | n=loc(UIDENT) { Classname(n) }
 
 attr_or_method:
- | t=loc(classname) n=loc(LIDENT) PTVIRGULE { Attr(t, n) }
+ | t=loc(classname) n=loc(LIDENT) PTVIRGULE 
+ 	{ Attr(t, n) }
  | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) PTVIRGULE { AttrWithValue(t, n, e) }
 
 expr:
@@ -69,6 +74,8 @@ expr:
  | NULL { Null }
  | THIS { This }
  | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
+ | e1=loc(expr) PTVIRGULE e2=loc(expr) 
+ 	{ Binop(Located.mk_elem Bptvirg (Location.symbol_loc $startpos $endpos), e1, e2) }
  | e1=loc(expr) b=loc(bop) e2=loc(expr) %prec BOPS { Binop(b, e1, e2) }
  | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
  	{ Instance(t, n, e1, e2) }
@@ -78,7 +85,7 @@ unop:
  | MINUS  	{ Uminus }
 
 %inline bop:
- | PTVIRGULE { Bptvirg }
+ /*| PTVIRGULE { Bptvirg }*/
  | INF 		{ Binf }
  | INFEQ	{ BinfEq }
  | SUP		{ Bsup }
