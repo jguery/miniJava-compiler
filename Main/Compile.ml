@@ -53,7 +53,8 @@ let rec string_of_attr_or_methods = function
 let rec print_compile_list l = match l with 
 	| [] -> ()
 	| t::q -> let matching = match Located.elem_of t with 
-			| Classdef(n,l) -> print_string ("Classname: " ^ (Located.elem_of n) )
+			| Classdef(n,l) -> print_string ("Classname: " ^ (Located.elem_of n) 
+				^ ", attr: \n" ^ (string_of_attr_or_methods l))
 			| ClassdefWithParent(n,p,l) -> print_string ("Classname: " ^(Located.elem_of n)^ " parent: " 
 				^ (string_of_classname (Located.elem_of p)) ^ ", attr: \n" ^ (string_of_attr_or_methods l))
 			| Expr e -> print_string (string_of_expr (Located.elem_of e))

@@ -3,9 +3,6 @@
   open Errors
   open Location
   open Located
-
-  let string_of_classname = function
-	| Classname cn -> Located.elem_of cn
 %}
 
 %token EOF
@@ -24,7 +21,6 @@
 %start compile_list
 %type <Types.class_or_expr Located.t list> compile_list
 
-%left UIDENT
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
 %left PTVIRGULE		/* Allows to link expressions before defining a new one (in compile_list) */
@@ -33,7 +29,6 @@
 %left OR
 %left AND
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
-%left BOPS		/* Goes with EXPR: in priority we add, or divide, etc... expressions before defining a new one. */
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
 
 
@@ -68,24 +63,25 @@ attr_or_method:
  | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) PTVIRGULE { AttrWithValue(t, n, e) }
 
 expr:
+ | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
+ | e1=loc(expr) b=loc(bop) e2=loc(final_expr) { Binop(b, e1, e2) }
+ | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
+ 	{ Instance(t, n, e1, e2) }
+ | e=final_expr { e }
+
+ final_expr:
  | i=loc(INT) { Int(i) }
  | b=loc(BOOLEAN) { Boolean(b) } 
  | s=loc(STRING) { String(s) }
  | NULL { Null }
  | THIS { This }
- | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
- | e1=loc(expr) PTVIRGULE e2=loc(expr) 
- 	{ Binop(Located.mk_elem Bptvirg (Location.symbol_loc $startpos $endpos), e1, e2) }
- | e1=loc(expr) b=loc(bop) e2=loc(expr) %prec BOPS { Binop(b, e1, e2) }
- | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
- 	{ Instance(t, n, e1, e2) }
 
-unop:
+%inline unop:
  | DIFF 	{ Udiff }
  | MINUS  	{ Uminus }
 
 %inline bop:
- /*| PTVIRGULE { Bptvirg }*/
+ | PTVIRGULE { Bptvirg }
  | INF 		{ Binf }
  | INFEQ	{ BinfEq }
  | SUP		{ Bsup }
