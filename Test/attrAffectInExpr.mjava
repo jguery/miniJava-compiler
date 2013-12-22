@@ -1,0 +1,24 @@
+b = "foo"; String bar = "true" in bar
+/*
+This expr should be read as: 
+Expr {
+	AttrName: b, value: Expr {Str(foo)}
+} 
+SEMICOL Expr {
+	Type: String, name: bar, value: Expr {Str(true)} 
+	in Expr {bar}
+}
+*/
+
+b = ("foo"; String bar = "true" in bar)
+/* This forces the semicolon to be used in the attribute affectation.
+Should mean:
+AttrName: b, value: Expr {
+Expr {
+	Str(foo)} 
+	SEMICOL Expr {
+		Type: String, name: bar, value: Expr {Str(true)} 
+		in Expr {bar}
+	}
+}
+*/

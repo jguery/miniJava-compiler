@@ -15,11 +15,13 @@ type classname =
   | StringType *)
 
 type expr = 
+  | Null
+  | This
   | Int of int Located.t
   | Boolean of bool Located.t
   | String of string Located.t
-  | Null
-  | This
+  | Var of string Located.t
+  | AttrAffect of string Located.t * expr Located.t
   | Unop of unop Located.t * expr Located.t
   | Binop of binop Located.t * expr Located.t * expr Located.t
   | Instance of classname Located.t * string Located.t * expr Located.t * expr Located.t

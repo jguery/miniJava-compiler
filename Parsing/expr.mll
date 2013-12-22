@@ -25,9 +25,13 @@ rule nexttoken = parse
   | "null" { NULL }
   | "this" { THIS }
   | "in" { IN }
+  | "/*" { parseLongcomment lexbuf }
+  | "//" { parseShortcomment lexbuf }
   | "\"" { parsestring "" lexbuf }
   | "{" { LBRAK }
   | "}" { RBRAK }
+  | "(" { LPAR }
+  | ")" { RPAR }
   | "!" { DIFF }
   | "-" { MINUS }
   | "+" { PLUS } 
@@ -48,7 +52,16 @@ rule nexttoken = parse
   | uident         { UIDENT (Lexing.lexeme lexbuf) }
   | lident { LIDENT (Lexing.lexeme lexbuf) }
 
-
 and parsestring res = parse
   | str as s { parsestring s lexbuf }
   | "\"" { STRING res }
+
+and parseLongcomment = parse
+  | "*/" { nexttoken lexbuf }
+  | newline { incr_line lexbuf; parseLongcomment lexbuf }
+  | _ { parseLongcomment lexbuf }
+
+and parseShortcomment = parse
+  | newline { incr_line lexbuf; nexttoken lexbuf }
+  | eof           { EOF }
+  | _ { parseShortcomment lexbuf }

@@ -7,13 +7,14 @@
 
 %token EOF
 %token CLASS EXTENDS 
-%token LBRAK RBRAK
+%token LBRAK RBRAK LPAR RPAR
 %token DIFF SEMICOL AFFECT
 %token MINUS 
 %token PLUS TIMES DIV MOD 
 %token EQUALS INF INFEQ SUP SUPEQ DIFFEQ AND OR 
 %token IN
 %token NULL THIS
+
 %token <string> STRING UIDENT LIDENT
 %token <int> INT
 %token <bool> BOOLEAN
@@ -21,9 +22,12 @@
 %start compile_list
 %type <Types.class_or_expr Located.t list> compile_list
 
+
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
 %left SEMICOL		/* Allows to link expressions before defining a new one (in compile_list) */
+%left ATTRAFFECT /* The semicolon at the end of an attribute affectation MUST end the affectation, 
+					otherwise we wouldn't a lot of work in a method */
 %left MINUS PLUS 	/* The usual calc precedence levels */
 %left TIMES DIV MOD
 %left OR
@@ -62,18 +66,21 @@ attr_or_method:
  /* Change in the grammar: attributes don't end with a semicolon */
 
 expr:
+ | a=loc(LIDENT) AFFECT e=loc(expr) %prec ATTRAFFECT { AttrAffect(a, e) }
  | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
  | e1=loc(expr) b=loc(bop) e2=loc(final_expr) { Binop(b, e1, e2) }
- | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
- 	{ Instance(t, n, e1, e2) }
  | e=final_expr { e }
 
  final_expr:
  | i=loc(INT) { Int(i) }
  | b=loc(BOOLEAN) { Boolean(b) } 
  | s=loc(STRING) { String(s) }
+ | v=loc(LIDENT) { Var(v) }
  | NULL { Null }
  | THIS { This }
+ | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
+ 	{ Instance(t, n, e1, e2) }
+ | LPAR e=expr RPAR { e }
 
 %inline unop:
  | DIFF 	{ Udiff }

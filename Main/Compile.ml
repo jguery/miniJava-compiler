@@ -30,10 +30,13 @@ let string_of_classname = function
 
 let rec string_of_expr = function
 	| Int i -> string_of_int (Located.elem_of i)
-	| Boolean b -> string_of_bool (Located.elem_of b)
-	| String s -> Located.elem_of s
+	| Boolean b -> "Bool(" ^ string_of_bool (Located.elem_of b) ^ ")"
+	| String s -> "Str(" ^ Located.elem_of s ^ ")"
+	| Var v -> Located.elem_of v
 	| Null -> "null"
 	| This -> "this"
+	| AttrAffect(a, e) -> "AttrName: " ^ (Located.elem_of a) ^ ", value: Expr {"
+		^ (string_of_expr (Located.elem_of e)) ^ "}"
 	| Unop(u, e) -> (string_of_unop (Located.elem_of u)) ^ "Expr {" 
 		^ (string_of_expr (Located.elem_of e)) ^ "}"
 	| Binop(b, e1, e2) -> "Expr {" ^ (string_of_expr (Located.elem_of e1)) ^ "}" 
