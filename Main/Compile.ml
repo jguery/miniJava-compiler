@@ -10,7 +10,7 @@ let string_of_unop u = match u with
 	| Uminus -> "minus "
 
 let string_of_bop b = match b with
-	| Bptvirg -> "; "
+	| Bsemicol -> " SEMICOL "
 	| Binf -> " INF "
 	| BinfEq -> " INFEQ "
 	| Bsup -> " SUP "
@@ -34,12 +34,13 @@ let rec string_of_expr = function
 	| String s -> Located.elem_of s
 	| Null -> "null"
 	| This -> "this"
-	| Unop(u, e) -> (string_of_unop (Located.elem_of u)) ^ (string_of_expr (Located.elem_of e))
-	| Binop(b, e1, e2) -> (string_of_expr (Located.elem_of e1)) ^ (string_of_bop (Located.elem_of b)) ^ 
-		(string_of_expr (Located.elem_of e2))
+	| Unop(u, e) -> (string_of_unop (Located.elem_of u)) ^ "Expr {" 
+		^ (string_of_expr (Located.elem_of e)) ^ "}"
+	| Binop(b, e1, e2) -> "Expr {" ^ (string_of_expr (Located.elem_of e1)) ^ "}" 
+		^ (string_of_bop (Located.elem_of b)) ^ "Expr {" ^ (string_of_expr (Located.elem_of e2)) ^ "}"
 	| Instance(t, n, e1, e2) -> ("Type: " ^ (string_of_classname (Located.elem_of t)) ^", name: " 
-			^ (Located.elem_of n) ^", value: " ^ (string_of_expr (Located.elem_of e1)) ^ " in " 
-			^ (string_of_expr (Located.elem_of e2))) 
+			^ (Located.elem_of n) ^", value: " ^ "Expr {" ^ (string_of_expr (Located.elem_of e1)) ^ "} in " 
+			^ "Expr {" ^ (string_of_expr (Located.elem_of e2)) ^ "}") 
 
 let rec string_of_attr_or_methods = function
 	| [] -> ""
