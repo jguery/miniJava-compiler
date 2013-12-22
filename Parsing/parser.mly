@@ -63,7 +63,7 @@ expr:
  | NULL { Null }
  | THIS { This }
  | u=loc(unop) e=loc(expr) { Unop(u, e) }
- | e1=loc(expr) b=loc(bop) e2=loc(expr) { Binop(b, e1, e2) }
+ /*| e1=loc(expr) b=loc(bop) e2=loc(expr) { Binop(b, e1, e2) }*/
  | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) 
  	{ Instance(t, n, e1, e2) }
 
