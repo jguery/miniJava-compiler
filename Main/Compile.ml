@@ -46,13 +46,14 @@ let rec string_of_expr exp =
 		^ (string_of_expr (Located.elem_of e)) ^ "}"
 	| Binop(b, e1, e2) -> "Expr {" ^ (string_of_expr (Located.elem_of e1)) ^ "}" 
 		^ (string_of_bop (Located.elem_of b)) ^ "Expr {" ^ (string_of_expr (Located.elem_of e2)) ^ "}"
-	| Instance(t, n, e1, e2) -> ("Type: " ^ (string_of_classname (Located.elem_of t)) ^", name: " 
+	| Local(t, n, e1, e2) -> ("Type: " ^ (string_of_classname (Located.elem_of t)) ^", name: " 
 			^ (Located.elem_of n) ^", value: " ^ "Expr {" ^ (string_of_expr (Located.elem_of e1)) ^ "} in " 
 			^ "Expr {" ^ (string_of_expr (Located.elem_of e2)) ^ "}") 
 	| Condition(e1, e2, e3) -> ("IF Expr {" ^ (string_of_expr (Located.elem_of e1)) ^ "} DO Expr {"
 			^ (string_of_expr (Located.elem_of e2)) ^ "} ELSE Expr {" ^ (string_of_expr (Located.elem_of e3)) ^ "}")
 	| MethodCall(e, s, args) -> ("CALL Object: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}, name: " 
 			^ (Located.elem_of s) ^ ", args: (" ^  (string_of_exprs args) ^ ")")
+	| Instance(t) -> ("INSTANCE Type: " ^ (string_of_classname (Located.elem_of t)))
 
 let rec string_of_params = function
 	| [] -> ""
@@ -66,7 +67,7 @@ let rec string_of_attr_or_methods = function
 		| Attr(cn, s) ->  ("Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
 			^ (Located.elem_of s) ^ "\n") ^ (string_of_attr_or_methods q)
 		| AttrWithValue(cn, s, e) -> ("Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
-			^ (Located.elem_of s) ^", value: " ^ (string_of_expr (Located.elem_of e)) ^ "\n") 
+			^ (Located.elem_of s) ^", value: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}\n") 
 			^ (string_of_attr_or_methods q)
 		| Method(cn, s, p, e) -> ("Method Return Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
 			^ (Located.elem_of s) ^ ", params: (" ^ (string_of_params p) ^ "), Expr {" 

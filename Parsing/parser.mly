@@ -13,6 +13,7 @@
 %token PLUS TIMES DIV MOD 
 %token EQUALS INF INFEQ SUP SUPEQ DIFFEQ AND OR 
 %token IN
+%token NEW
 %token IF ELSE
 %token NULL THIS
 
@@ -81,7 +82,7 @@ expr:
 
 middle_expr:
  | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
- 	{ Instance(t, n, e1, e2) }
+ 	{ Local(t, n, e1, e2) }
  | e1=loc(terminal_expr) POINT m=loc(LIDENT) LPAR args=separated_list(COMMA,loc(expr)) RPAR
  	{ MethodCall(e1, m, args) } 
  	/* Method calls are applied to final expressions only, so that:
@@ -96,6 +97,7 @@ terminal_expr:
  | v=loc(LIDENT) { Var(v) }
  | NULL { Null }
  | THIS { This }
+ | NEW t=loc(classname) { Instance(t) }
  | LPAR e=expr RPAR { e }
 
 %inline unop:

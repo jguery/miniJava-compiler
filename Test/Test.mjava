@@ -10,11 +10,11 @@ class A {
 		}
 	}
 
-	static Int m2(Boolean b) {
+	Int m2(Boolean b) {
 		4
 	}
 }
 
-a = new A in 
-	A.m2(true);
+A a = new A in 
+	a.m2(true);
 	a.methode(5)

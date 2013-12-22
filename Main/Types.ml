@@ -24,9 +24,11 @@ type expr =
   | AttrAffect of string Located.t * expr Located.t
   | Unop of unop Located.t * expr Located.t
   | Binop of binop Located.t * expr Located.t * expr Located.t
-  | Instance of classname Located.t * string Located.t * expr Located.t * expr Located.t
+  | Local of classname Located.t * string Located.t * expr Located.t * expr Located.t
+    (* Defines an expression used locally *)
   | Condition of expr Located.t * expr Located.t * expr Located.t
   | MethodCall of expr Located.t * string Located.t * expr Located.t list
+  | Instance of classname Located.t
 
 type param = 
   | Param of classname Located.t * string Located.t

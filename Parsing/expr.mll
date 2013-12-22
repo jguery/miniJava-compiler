@@ -27,6 +27,7 @@ rule nexttoken = parse
   | "in" { IN }
   | "if" { IF }
   | "else" { ELSE }
+  | "new" { NEW }
   | "/*" { parseLongcomment lexbuf }
   | "//" { parseShortcomment lexbuf }
   | "\"" { parsestring "" lexbuf }
