@@ -43,7 +43,7 @@ rule nexttoken = parse
   | "<=" { INFEQ }
   | "<" { INF } 
   | "=" { AFFECT }
-  | ";" { PTVIRGULE }
+  | ";" { SEMICOL }
   | digit+ as nb  { INT (int_of_string nb) }
   | uident         { UIDENT (Lexing.lexeme lexbuf) }
   | lident { LIDENT (Lexing.lexeme lexbuf) }

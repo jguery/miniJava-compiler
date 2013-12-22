@@ -1,9 +1,9 @@
 class A extends B {
-	Int i = 10;
-	String s = "foobar";
-	Boolean b = true;
-	String d = null;
-	A a = this;
+	Int i = 10
+	String s = "foobar"
+	Boolean b = true
+	String d = null
+	A a = this
 	B b = 
-		C c = false in 10;
+		C c = false in 10
 }

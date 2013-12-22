@@ -8,7 +8,7 @@
 %token EOF
 %token CLASS EXTENDS 
 %token LBRAK RBRAK
-%token DIFF PTVIRGULE AFFECT
+%token DIFF SEMICOL AFFECT
 %token MINUS 
 %token PLUS TIMES DIV MOD 
 %token EQUALS INF INFEQ SUP SUPEQ DIFFEQ AND OR 
@@ -23,14 +23,13 @@
 
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
-%left PTVIRGULE		/* Allows to link expressions before defining a new one (in compile_list) */
+%left SEMICOL		/* Allows to link expressions before defining a new one (in compile_list) */
 %left MINUS PLUS 	/* The usual calc precedence levels */
 %left TIMES DIV MOD
 %left OR
 %left AND
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
-
 
 %%
 
@@ -58,9 +57,9 @@ classname:
  | n=loc(UIDENT) { Classname(n) }
 
 attr_or_method:
- | t=loc(classname) n=loc(LIDENT) PTVIRGULE 
- 	{ Attr(t, n) }
- | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) PTVIRGULE { AttrWithValue(t, n, e) }
+ | t=loc(classname) n=loc(LIDENT) { Attr(t, n) }
+ | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { AttrWithValue(t, n, e) }
+ /* Change in the grammar: attributes don't end with a semicolon */
 
 expr:
  | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
@@ -81,7 +80,7 @@ expr:
  | MINUS  	{ Uminus }
 
 %inline bop:
- | PTVIRGULE { Bptvirg }
+ | SEMICOL  { Bsemicol }
  | INF 		{ Binf }
  | INFEQ	{ BinfEq }
  | SUP		{ Bsup }

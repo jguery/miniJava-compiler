@@ -1,6 +1,6 @@
 class A() {
-	Boolean b;
-	Int i;
+	Boolean b
+	Int i
 	String methode(Int j) {
 		String d = null in 
 		if (j==0) {
