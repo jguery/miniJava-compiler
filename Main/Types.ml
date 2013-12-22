@@ -25,10 +25,16 @@ type expr =
   | Unop of unop Located.t * expr Located.t
   | Binop of binop Located.t * expr Located.t * expr Located.t
   | Instance of classname Located.t * string Located.t * expr Located.t * expr Located.t
+  | Condition of expr Located.t * expr Located.t * expr Located.t
+  | MethodCall of expr Located.t * string Located.t * expr Located.t list
+
+type param = 
+  | Param of classname Located.t * string Located.t
 
 type attr_or_method = 
   | Attr of classname Located.t * string Located.t
   | AttrWithValue of classname Located.t * string Located.t * expr Located.t
+  | Method of classname Located.t * string Located.t * param Located.t list * expr Located.t
 
 type class_or_expr = 
   | Classdef of string Located.t * attr_or_method Located.t list (* No parent, the parent is the Object class *)

@@ -1,0 +1,26 @@
+if (true) {
+	foo
+} else {
+	bar
+} 
+
+if ("foo") {
+	foo
+} else {
+	if (b) {
+		true
+	} else {
+		aie; aie; aie
+	}
+}
+/* Should read: 
+IF Expr {Str(foo)} 
+DO Expr {foo} 
+ELSE Expr {
+	IF Expr {b} 
+	DO Expr {Bool(true)} 
+	ELSE Expr {
+		Expr {Expr {aie} SEMICOL Expr {aie}} SEMICOL Expr {aie}
+	}
+}
+*/

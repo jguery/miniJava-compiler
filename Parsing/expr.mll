@@ -25,6 +25,8 @@ rule nexttoken = parse
   | "null" { NULL }
   | "this" { THIS }
   | "in" { IN }
+  | "if" { IF }
+  | "else" { ELSE }
   | "/*" { parseLongcomment lexbuf }
   | "//" { parseShortcomment lexbuf }
   | "\"" { parsestring "" lexbuf }
@@ -48,9 +50,12 @@ rule nexttoken = parse
   | "<" { INF } 
   | "=" { AFFECT }
   | ";" { SEMICOL }
+  | "," { COMMA }
+  | "." { POINT }
   | digit+ as nb  { INT (int_of_string nb) }
   | uident         { UIDENT (Lexing.lexeme lexbuf) }
   | lident { LIDENT (Lexing.lexeme lexbuf) }
+  | _ { ERROR } (* This is just so any character is taken into account *)
 
 and parsestring res = parse
   | str as s { parsestring s lexbuf }

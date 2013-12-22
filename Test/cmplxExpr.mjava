@@ -1,3 +1,19 @@
 A a = true;this;"tr" in 1;1;true;v
+/* Reads:
+Type: A, name: a, value: Expr {
+	Expr {
+		Expr {Bool(true)} SEMICOL Expr {this}
+	} 
+	SEMICOL Expr {Str(tr)}
+} in Expr {
+	Expr {
+		Expr {
+			Expr {1} SEMICOL Expr {1}
+		} 
+		SEMICOL Expr {Bool(true)}
+	} 
+	SEMICOL Expr {v}
+}
+*/
 
 (A a = "foo" in a)

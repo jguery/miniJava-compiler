@@ -1,4 +1,4 @@
-class A() {
+class A {
 	Boolean b
 	Int i
 	String methode(Int j) {

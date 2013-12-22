@@ -1,0 +1,14 @@
+class A {
+	String s = "foo"
+	String m1(A a, B b) {
+		s = "bar";
+		"foobar"
+		/*
+		Expr should look like this:
+		Expr {
+			Expr {AttrName: s, value: Expr {Str(bar)}} 
+			SEMICOL Expr {Str(foobar)}
+		}
+		*/
+	}
+}

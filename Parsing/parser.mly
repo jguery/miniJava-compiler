@@ -5,14 +5,15 @@
   open Located
 %}
 
-%token EOF
+%token EOF ERROR
 %token CLASS EXTENDS 
 %token LBRAK RBRAK LPAR RPAR
-%token DIFF SEMICOL AFFECT
+%token DIFF SEMICOL AFFECT COMMA POINT
 %token MINUS 
 %token PLUS TIMES DIV MOD 
 %token EQUALS INF INFEQ SUP SUPEQ DIFFEQ AND OR 
 %token IN
+%token IF ELSE
 %token NULL THIS
 
 %token <string> STRING UIDENT LIDENT
@@ -63,23 +64,38 @@ classname:
 attr_or_method:
  | t=loc(classname) n=loc(LIDENT) { Attr(t, n) }
  | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { AttrWithValue(t, n, e) }
- /* Change in the grammar: attributes don't end with a semicolon */
+ 	/* Change in the grammar: attributes don't end with a semicolon */
+ | r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK
+ 	{ Method(r, n, p, e) }
+
+param:
+ | c=loc(classname) n=loc(LIDENT) { Param(c, n) }
 
 expr:
  | a=loc(LIDENT) AFFECT e=loc(expr) %prec ATTRAFFECT { AttrAffect(a, e) }
  | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
- | e1=loc(expr) b=loc(bop) e2=loc(final_expr) { Binop(b, e1, e2) }
- | e=final_expr { e }
+ | e1=loc(expr) b=loc(bop) e2=loc(middle_expr) { Binop(b, e1, e2) }
+ | IF LPAR e1=loc(expr) RPAR LBRAK e2=loc(expr) RBRAK ELSE LBRAK e3=loc(expr) RBRAK 
+ 	{ Condition(e1, e2, e3) }
+ | e=middle_expr { e }
 
- final_expr:
+middle_expr:
+ | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
+ 	{ Instance(t, n, e1, e2) }
+ | e1=loc(terminal_expr) POINT m=loc(LIDENT) LPAR args=separated_list(COMMA,loc(expr)) RPAR
+ 	{ MethodCall(e1, m, args) } 
+ 	/* Method calls are applied to final expressions only, so that:
+ 		a+b.m() == a+(b.m())
+ 	*/
+ | e=terminal_expr { e }
+
+terminal_expr:
  | i=loc(INT) { Int(i) }
  | b=loc(BOOLEAN) { Boolean(b) } 
  | s=loc(STRING) { String(s) }
  | v=loc(LIDENT) { Var(v) }
  | NULL { Null }
  | THIS { This }
- | t=loc(classname) n=loc(LIDENT) AFFECT e1=loc(expr) IN e2=loc(expr) %prec AFF
- 	{ Instance(t, n, e1, e2) }
  | LPAR e=expr RPAR { e }
 
 %inline unop:

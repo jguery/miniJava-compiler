@@ -1,0 +1,42 @@
+// Two expressions. 
+obj.method()
+
+a+b.method()
+/*
+Should read:
+Expr {a} 
+ADD 
+Expr {
+	CALL Object: Expr {b}, name: method, args: ()
+}
+*/
+(a+b).m()
+/* Reads:
+CALL Object: Expr {Expr {a} ADD Expr {b}}, name: m, args: ()
+*/
+
+A a = "foo" in a.m()
+/* Reads:
+Type: A, name: a, value: Expr {Str(foo)} in Expr {CALL Object: Expr {a}, name: m, args: ()}
+*/
+
+(A a = "true" in a).m()
+/* Reads:
+CALL Object: Expr {
+	Type: A, name: a, value: Expr {Str(true)} 
+	in Expr {a}
+}, name: m, args: ()
+*/
+
+a.m(a+b;c,c)
+
+/* Reads:
+CALL Object: Expr {a}, name: m, args: (
+	Expr {
+		Expr {Expr {a} ADD Expr {b}} 
+		SEMICOL 
+		Expr {c}
+	}, 
+	Expr {c}, 
+)
+*/
