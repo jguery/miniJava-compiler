@@ -22,13 +22,13 @@
 %token <int> INT
 %token <bool> BOOLEAN
 
-%start compile_list
-%type <Structure.class_or_expr Located.t list> compile_list
+%start structure_tree
+%type <Structure.class_or_expr Located.t list> structure_tree
 
 
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
-%left SEMICOL		/* Allows to link expressions before defining a new one (in compile_list) */
+%left SEMICOL		/* Allows to link expressions before defining a new one (in structure_tree) */
 %left ATTRAFFECT /* The semicolon at the end of an attribute affectation MUST end the affectation, 
 					otherwise we wouldn't a lot of work in a method */
 %left MINUS PLUS 	/* The usual calc precedence levels */
@@ -44,7 +44,7 @@
 loc(X) :
  | x = X { Located.mk_elem x (Location.symbol_loc $startpos $endpos) }
 
-compile_list:
+structure_tree:
  | e=loc(class_or_expr)* EOF { e }
  | error /* This rule is automatically detected by menhir when the 
  			current token doesn't fit in the grammar */

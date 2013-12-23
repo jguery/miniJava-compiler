@@ -80,14 +80,14 @@ let rec string_of_attr_or_methods = function
 			^ (string_of_expr (Located.elem_of e)) ^ "}\n") ^ (string_of_attr_or_methods q)
 		| StaticAttr(cn, s) ->  ("STATIC ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
 			^ (Located.elem_of s) ^ "\n") ^ (string_of_attr_or_methods q)
-		| StaticAttrWithValue(cn, s, e) -> ("STATIC ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
-			^ (Located.elem_of s) ^", value: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}\n") 
+		| StaticAttrWithValue(cn, s, e) -> ("STATIC ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) 
+			^", name: " ^ (Located.elem_of s) ^", value: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}\n") 
 			^ (string_of_attr_or_methods q)
-		| StaticMethod(cn, s, p, e) -> ("STATIC METHOD Return Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
-			^ (Located.elem_of s) ^ ", params: (" ^ (string_of_params p) ^ "), Expr {" 
+		| StaticMethod(cn, s, p, e) -> ("STATIC METHOD Return Type: " ^ (string_of_classname (Located.elem_of cn)) 
+			^", name: " ^ (Located.elem_of s) ^ ", params: (" ^ (string_of_params p) ^ "), Expr {" 
 			^ (string_of_expr (Located.elem_of e)) ^ "}\n") ^ (string_of_attr_or_methods q)
 
-let rec print_compile_list l = match l with 
+let rec print_structure_tree l = match l with 
 	| [] -> ()
 	| t::q -> let matching = match Located.elem_of t with 
 			| Classdef(n,l) -> print_string ("Classname: " ^ (Located.elem_of n) 
@@ -98,13 +98,13 @@ let rec print_compile_list l = match l with
 		in
 		matching;
 		print_endline "";
-		print_compile_list q
+		print_structure_tree q
 
 
 let execute lexbuf verbose = 
   try
-    let l = compile_list nexttoken lexbuf in
-	    print_compile_list l;
+    let l = structure_tree nexttoken lexbuf in
+	    print_structure_tree l;
 	    print_newline();
 	    (* D'autres opérations *)
 	    exit 0
