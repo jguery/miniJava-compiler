@@ -18,6 +18,7 @@ rule nexttoken = parse
   | newline { incr_line lexbuf; nexttoken lexbuf }
   | space+        { nexttoken lexbuf }
   | eof           { EOF }
+  | "instanceof" { INSTANCEOF }
   | "class"	{ CLASS }
   | "extends" { EXTENDS }
   | "true" { BOOLEAN true }
@@ -65,6 +66,7 @@ and parsestring res = parse
 and parseLongcomment = parse
   | "*/" { nexttoken lexbuf }
   | newline { incr_line lexbuf; parseLongcomment lexbuf }
+  | eof { ERROR }
   | _ { parseLongcomment lexbuf }
 
 and parseShortcomment = parse

@@ -1,0 +1,16 @@
+a instanceof Boolean
+/* Reads:
+ISINSTANCE? Type: Boolean, of Expr{a}
+*/
+
+(A)a instanceof B
+/* Reads:
+ISINSTANCE? Type: B, of Expr{CAST To: A, of Expr{a}}
+*/
+
+a+b instanceof A
+/* Reads:
+Expr {a} 
+ADD 
+Expr {ISINSTANCE? Type: A, of Expr{b}}
+*/

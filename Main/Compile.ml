@@ -54,7 +54,9 @@ let rec string_of_expr exp =
 	| MethodCall(e, s, args) -> ("CALL Object: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}, name: " 
 			^ (Located.elem_of s) ^ ", args: (" ^  (string_of_exprs args) ^ ")")
 	| Instance(t) -> ("INSTANCE Type: " ^ (string_of_classname (Located.elem_of t)))
-	| Cast(t, e) -> ("CAST To: " ^  (string_of_classname (Located.elem_of t)) ^ ", of Expr{"
+	| Cast(t, e) -> ("CAST To: " ^ (string_of_classname (Located.elem_of t)) ^ ", of Expr{"
+			^ (string_of_expr (Located.elem_of e)) ^ "}")
+	| Instanceof(e, t) -> ("ISINSTANCE? Type: " ^ (string_of_classname (Located.elem_of t)) ^ ", of Expr{"
 			^ (string_of_expr (Located.elem_of e)) ^ "}")
 
 let rec string_of_params = function

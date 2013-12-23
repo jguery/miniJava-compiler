@@ -14,6 +14,7 @@
 %token EQUALS INF INFEQ SUP SUPEQ DIFFEQ AND OR 
 %token IN
 %token NEW
+%token INSTANCEOF
 %token IF ELSE
 %token NULL THIS
 
@@ -88,6 +89,8 @@ middle_expr:
  	/* Method calls are applied to final expressions only, so that:
  		a+b.m() == a+(b.m())
  	*/
+ | e=loc(terminal_expr) INSTANCEOF t=loc(classname) { Instanceof(e,t) }
+ 	/* "instanceof" is applied to terminal expressions only */
  | e=terminal_expr { e }
 
 terminal_expr:

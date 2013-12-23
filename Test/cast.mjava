@@ -1,0 +1,20 @@
+-(A)a+b
+/* Reads:
+Expr {minus Expr {CAST To: A, of Expr{a}}} 
+ADD 
+Expr {b}
+*/
+
+(A)a+b
+/* Reads:
+Expr {CAST To: A, of Expr{a}} 
+ADD 
+Expr {b}
+*/
+
+(A)(a+b)
+/* Reads:
+CAST To: A, of Expr{
+	Expr {a} ADD Expr {b}
+}
+*/

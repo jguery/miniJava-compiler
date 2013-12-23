@@ -30,6 +30,7 @@ type expr =
   | MethodCall of expr Located.t * string Located.t * expr Located.t list
   | Instance of classname Located.t
   | Cast of classname Located.t * expr Located.t
+  | Instanceof of expr Located.t * classname Located.t
 
 type param = 
   | Param of classname Located.t * string Located.t
