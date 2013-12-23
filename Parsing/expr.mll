@@ -1,6 +1,7 @@
 {
   open Parser
   open Location
+  open Buffer
 }
 
 let upperletter = ['A'-'Z']
@@ -11,8 +12,6 @@ let uident = upperletter (letter|digit|'_')*
 let lident = lowerletter (letter|digit|'_')*
 let newline = ('\010' | '\013' | "\013\010")
 let space = [' ' '\t' '\r']
-
-let str = [^'"']+
 
 rule nexttoken = parse
   | newline { incr_line lexbuf; nexttoken lexbuf }
@@ -31,7 +30,7 @@ rule nexttoken = parse
   | "new" { NEW }
   | "/*" { parseLongcomment lexbuf }
   | "//" { parseShortcomment lexbuf }
-  | "\"" { parsestring "" lexbuf }
+  | "\"" { parsestring (create 16) lexbuf }
   | "{" { LBRAK }
   | "}" { RBRAK }
   | "(" { LPAR }
@@ -60,8 +59,12 @@ rule nexttoken = parse
   | _ { ERROR } (* This is just so any character is taken into account *)
 
 and parsestring res = parse
-  | str as s { parsestring s lexbuf }
-  | "\"" { STRING res }
+  | "\\\\" { parsestring (add_char res '\\'; res) lexbuf }
+  | "\\n" { parsestring (add_char res '\n'; res) lexbuf }
+  | "\"" { STRING (contents res) }
+  | newline as c { incr_line lexbuf; parsestring res lexbuf } (* New line in the code are not considered *)
+  | eof { ERROR }
+  | _ as c { parsestring (add_char res c; res) lexbuf }
 
 and parseLongcomment = parse
   | "*/" { nexttoken lexbuf }
