@@ -13,7 +13,7 @@
 %token PLUS TIMES DIV MOD 
 %token EQUALS INF INFEQ SUP SUPEQ DIFFEQ AND OR 
 %token IN
-%token NEW
+%token NEW STATIC
 %token INSTANCEOF
 %token IF ELSE
 %token NULL THIS
@@ -65,10 +65,14 @@ classname:
 
 attr_or_method:
  | t=loc(classname) n=loc(LIDENT) { Attr(t, n) }
+ | STATIC t=loc(classname) n=loc(LIDENT) { StaticAttr(t, n) }
  | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { AttrWithValue(t, n, e) }
  	/* Change in the grammar: attributes don't end with a semicolon */
+ | STATIC t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { StaticAttrWithValue(t, n, e) }
  | r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK
  	{ Method(r, n, p, e) }
+ | STATIC r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK
+ 	{ StaticMethod(r, n, p, e) }
 
 param:
  | c=loc(classname) n=loc(LIDENT) { Param(c, n) }
@@ -89,6 +93,8 @@ middle_expr:
  	/* Method calls are applied to final expressions only, so that:
  		a+b.m() == a+(b.m())
  	*/
+ | t=loc(classname) POINT m=loc(LIDENT) LPAR args=separated_list(COMMA,loc(expr)) RPAR
+ 	{ StaticMethodCall(t, m, args) }  
  | e=loc(terminal_expr) INSTANCEOF t=loc(classname) { Instanceof(e,t) }
  	/* "instanceof" is applied to terminal expressions only */
  | e=terminal_expr { e }

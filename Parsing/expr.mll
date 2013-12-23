@@ -18,6 +18,7 @@ rule nexttoken = parse
   | space+        { nexttoken lexbuf }
   | eof           { EOF }
   | "instanceof" { INSTANCEOF }
+  | "static" { STATIC }
   | "class"	{ CLASS }
   | "extends" { EXTENDS }
   | "true" { BOOLEAN true }

@@ -53,6 +53,8 @@ let rec string_of_expr exp =
 			^ (string_of_expr (Located.elem_of e2)) ^ "} ELSE Expr {" ^ (string_of_expr (Located.elem_of e3)) ^ "}")
 	| MethodCall(e, s, args) -> ("CALL Object: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}, name: " 
 			^ (Located.elem_of s) ^ ", args: (" ^  (string_of_exprs args) ^ ")")
+	| StaticMethodCall(t, s, args) -> ("STATIC CALL Type: " ^ (string_of_classname (Located.elem_of t)) 
+			^ "}, name: " ^ (Located.elem_of s) ^ ", args: (" ^  (string_of_exprs args) ^ ")")
 	| Instance(t) -> ("INSTANCE Type: " ^ (string_of_classname (Located.elem_of t)))
 	| Cast(t, e) -> ("CAST To: " ^ (string_of_classname (Located.elem_of t)) ^ ", of Expr{"
 			^ (string_of_expr (Located.elem_of e)) ^ "}")
@@ -68,12 +70,20 @@ let rec string_of_params = function
 let rec string_of_attr_or_methods = function
 	| [] -> ""
 	| t::q -> match Located.elem_of t with 
-		| Attr(cn, s) ->  ("Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
+		| Attr(cn, s) ->  ("ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
 			^ (Located.elem_of s) ^ "\n") ^ (string_of_attr_or_methods q)
-		| AttrWithValue(cn, s, e) -> ("Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
+		| AttrWithValue(cn, s, e) -> ("ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
 			^ (Located.elem_of s) ^", value: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}\n") 
 			^ (string_of_attr_or_methods q)
-		| Method(cn, s, p, e) -> ("Method Return Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
+		| Method(cn, s, p, e) -> ("METHOD Return Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
+			^ (Located.elem_of s) ^ ", params: (" ^ (string_of_params p) ^ "), Expr {" 
+			^ (string_of_expr (Located.elem_of e)) ^ "}\n") ^ (string_of_attr_or_methods q)
+		| StaticAttr(cn, s) ->  ("STATIC ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
+			^ (Located.elem_of s) ^ "\n") ^ (string_of_attr_or_methods q)
+		| StaticAttrWithValue(cn, s, e) -> ("STATIC ATTR Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
+			^ (Located.elem_of s) ^", value: Expr {" ^ (string_of_expr (Located.elem_of e)) ^ "}\n") 
+			^ (string_of_attr_or_methods q)
+		| StaticMethod(cn, s, p, e) -> ("STATIC METHOD Return Type: " ^ (string_of_classname (Located.elem_of cn)) ^", name: " 
 			^ (Located.elem_of s) ^ ", params: (" ^ (string_of_params p) ^ "), Expr {" 
 			^ (string_of_expr (Located.elem_of e)) ^ "}\n") ^ (string_of_attr_or_methods q)
 
@@ -99,7 +109,7 @@ let execute lexbuf verbose =
 	    (* D'autres opérations *)
 	    exit 0
   with PError (e, t) ->
-  	(* Handle errors errors *)
+  	(* Handle errors *)
   	Location.print t;
   	print_endline (Errors.string_of_error e);
     print_endline (Lexing.lexeme lexbuf);

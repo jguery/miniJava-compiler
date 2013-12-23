@@ -28,6 +28,8 @@ type expr =
     (* Defines an expression used locally *)
   | Condition of expr Located.t * expr Located.t * expr Located.t
   | MethodCall of expr Located.t * string Located.t * expr Located.t list
+  | StaticMethodCall of classname Located.t * string Located.t * expr Located.t list
+    (* Static method calls are only applied ot classnames *)
   | Instance of classname Located.t
   | Cast of classname Located.t * expr Located.t
   | Instanceof of expr Located.t * classname Located.t
@@ -39,6 +41,9 @@ type attr_or_method =
   | Attr of classname Located.t * string Located.t
   | AttrWithValue of classname Located.t * string Located.t * expr Located.t
   | Method of classname Located.t * string Located.t * param Located.t list * expr Located.t
+  | StaticAttr of classname Located.t * string Located.t
+  | StaticAttrWithValue of classname Located.t * string Located.t * expr Located.t
+  | StaticMethod of classname Located.t * string Located.t * param Located.t list * expr Located.t
 
 type class_or_expr = 
   | Classdef of string Located.t * attr_or_method Located.t list (* No parent, the parent is the Object class *)
