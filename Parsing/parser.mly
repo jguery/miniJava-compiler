@@ -1,5 +1,5 @@
 %{
-  open Types
+  open Structure
   open Errors
   open Location
   open Located
@@ -23,7 +23,7 @@
 %token <bool> BOOLEAN
 
 %start compile_list
-%type <Types.class_or_expr Located.t list> compile_list
+%type <Structure.class_or_expr Located.t list> compile_list
 
 
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */

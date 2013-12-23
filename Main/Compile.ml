@@ -1,5 +1,5 @@
 open Parser
-open Types
+open Structure
 open Errors
 open Location
 open Located
