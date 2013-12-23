@@ -29,6 +29,7 @@ type expr =
   | Condition of expr Located.t * expr Located.t * expr Located.t
   | MethodCall of expr Located.t * string Located.t * expr Located.t list
   | Instance of classname Located.t
+  | Cast of classname Located.t * expr Located.t
 
 type param = 
   | Param of classname Located.t * string Located.t

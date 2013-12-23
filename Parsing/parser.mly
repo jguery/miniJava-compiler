@@ -98,6 +98,8 @@ terminal_expr:
  | NULL { Null }
  | THIS { This }
  | NEW t=loc(classname) { Instance(t) }
+ | LPAR t=loc(classname) RPAR e=loc(terminal_expr) { Cast(t, e) }
+ 	/* Cast is performed on terminal expressions only */
  | LPAR e=expr RPAR { e }
 
 %inline unop:
