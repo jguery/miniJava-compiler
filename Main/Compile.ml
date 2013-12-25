@@ -104,6 +104,10 @@ let rec print_structure_tree l = match l with
 let execute lexbuf verbose = 
   try
     let l = structure_tree nexttoken lexbuf in
+    	(*if verbose then begin
+	    	print_structure_tree l;
+	    	print_newline();
+	    end; *)
 	    print_structure_tree l;
 	    print_newline();
 	    (* D'autres opérations *)
