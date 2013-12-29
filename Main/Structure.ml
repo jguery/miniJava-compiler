@@ -1,7 +1,7 @@
 open Located
 
 type binop =
-  | Bsemicol | Binf | BinfEq | Bsup | Bsupeq | Bdiff | Beq 
+  | Bsemicol | Binf | Binfeq | Bsup | Bsupeq | Bdiff | Beq 
   | Badd | Bsub | Bmul | Bdiv | Bmod | Band | Bor
 
 type unop =

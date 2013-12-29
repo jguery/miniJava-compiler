@@ -12,7 +12,7 @@ let string_of_unop u = match u with
 let string_of_bop b = match b with
 	| Bsemicol -> " SEMICOL "
 	| Binf -> " INF "
-	| BinfEq -> " INFEQ "
+	| Binfeq -> " INFEQ "
 	| Bsup -> " SUP "
 	| Bsupeq -> " SUPEQ "
 	| Bdiff -> " DIFF "

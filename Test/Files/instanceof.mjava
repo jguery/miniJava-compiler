@@ -1,16 +1,13 @@
 a instanceof Boolean
-/* Reads:
-ISINSTANCE? Type: Boolean, of Expr{a}
-*/
 
+// Priority given to the cast operator
 (A)a instanceof B
-/* Reads:
-ISINSTANCE? Type: B, of Expr{CAST To: A, of Expr{a}}
-*/
 
+// Priority is given to the instanceof operator
 a+b instanceof A
-/* Reads:
-Expr {a} 
-ADD 
-Expr {ISINSTANCE? Type: A, of Expr{b}}
-*/
+
+// Priority given to the instanceof operator
+a = a instanceof B
+
+// Priority given to the instanceof operator
+Boolean b = 3 in b instanceof Int

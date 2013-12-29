@@ -1,0 +1,18 @@
+class A {
+	String m() {
+		"foo"
+	}
+	Boolean m2(Int i) {
+		true
+	}
+	B m3(Int i, C c) {
+		D d = i in 
+			if (c=="foo") {
+				true
+			} else {
+				false
+			};
+		a = c;
+		a+2*c
+	}
+}

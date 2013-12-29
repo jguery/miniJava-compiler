@@ -234,7 +234,7 @@ let test_attr_affect _ =
 (* Test operation priorites *)
 let test_operations_priorities _ = 
 	build_success_test
-		[Expr_t(Binop_t(Badd, Int_t 2, Binop_t(Bmul, Int_t 3, Int_t 4)));
+		[Expr_t(Binop_t(Badd, Unop_t(Uminus, Int_t 2), Binop_t(Bmul, Int_t 3, Int_t 4)));
 		 Expr_t(Binop_t(Badd, Binop_t(Bmul, Int_t 2, Int_t 3), Int_t 4));
 		 Expr_t(Binop_t(Bmul, Int_t 2, Binop_t(Badd, Int_t 3, Int_t 4)));
 		 Expr_t(Binop_t(Bsub, Binop_t(Badd, Int_t 1, Binop_t(Bmul, Int_t 2, Int_t 3)), 
@@ -255,6 +255,95 @@ let test_operations_priorities _ =
 		]
 		"operationsPriorities.mjava"
 
+(* Test the unary operators in complexe expressions *)
+let test_expr_unop _ = 
+	build_success_test
+		[Expr_t(Binop_t(Bsub, Unop_t(Udiff, Int_t 10), Int_t 10));
+		 Expr_t(Local_t(Classname_t "String", "s", String_t "foobar", Unop_t(Uminus, Int_t 10)));]
+		"exprUnop.mjava"
+
+(* Attribute affectation in expression *)
+let test_attr_affect_in_expr _ = 
+	build_success_test 
+		[Expr_t(Binop_t(Bsemicol, AttrAffect_t("b", String_t "foo"), 
+			Local_t(Classname_t "String", "bar", String_t "true", Var_t "bar")));
+		 Expr_t(AttrAffect_t("b", Binop_t(Bsemicol, String_t "foo", 
+			Local_t(Classname_t "String", "bar", String_t "true", Var_t "bar"))));
+		 Expr_t(Local_t(Classname_t "A", "a", 
+		 	AttrAffect_t("c", Local_t(Classname_t "B", "b", String_t "foo", Var_t "b")), Var_t "a"))]
+		"attrAffectInExpr.mjava"
+
+(* Local affectations tests *)
+let test_local_vars _ = 
+	build_success_test 
+		[Expr_t(Binop_t(Bsemicol, Binop_t(Bsemicol, Binop_t(Bsemicol, 
+			Local_t(Classname_t "A", "a", Binop_t(Bsemicol, 
+				Binop_t(Bsemicol, Boolean_t true, This_t), String_t "tr"), Int_t 1), 
+			Int_t 1), Boolean_t true), Var_t "v"));
+		 Expr_t(Local_t(Classname_t "A", "a", Binop_t(Bsemicol, 
+			Binop_t(Bsemicol, Boolean_t true, This_t), String_t "tr"), 
+		 	Binop_t(Bsemicol, Binop_t(Bsemicol, Binop_t(Bsemicol, Int_t 1, Int_t 1), Boolean_t true), 
+		 		Var_t "v")));
+		 Expr_t(Local_t(Classname_t "A", "a", Binop_t(Badd, Int_t 1, Int_t 1), Binop_t(Badd, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bsub, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bmul, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bdiv, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bmod, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bsup, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bsupeq, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Binf, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Binfeq, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Beq, Int_t 1, Int_t 1)));
+		 Expr_t(Local_t(Classname_t "A", "a", Int_t 1, Binop_t(Bdiff, Int_t 1, Int_t 1)));
+		]
+		"localVars.mjava"
+
+(* Test method calls and the priority of its operator (the point) *)
+let test_method_calls _ = 
+	build_success_test
+		[Expr_t(MethodCall_t(Var_t "obj", "method", []));
+		 Expr_t(Binop_t(Badd, Var_t "a", MethodCall_t(Var_t "b", "method", [])));
+		 Expr_t(MethodCall_t(Binop_t(Badd, Var_t "a", Var_t "b"), "m", []));
+		 Expr_t(Local_t(Classname_t "A", "a", String_t "foo", MethodCall_t(Var_t "a", "m", [])));
+		 Expr_t(MethodCall_t(Local_t(Classname_t "A", "a", String_t "foo", Var_t "a"), "m", []));
+		 Expr_t(MethodCall_t(Var_t "a", "m", [Binop_t(Bsemicol, 
+		 	Binop_t(Badd, Var_t "a", Var_t "b"), Var_t "c"); Var_t "c";]));
+		 Expr_t(Local_t(Classname_t "A", "a", String_t "foo", MethodCall_t(Var_t "a", "m", [])));
+		 Expr_t(AttrAffect_t("a", MethodCall_t(Var_t "b", "m", [])))]
+		"methodCall.mjava"
+
+(* Test method definitions in classes
+	Since the core of the method, the expression, is between brackets, 
+	there is not much ambiguity here *)
+let test_method_definition _ = 
+	build_success_test
+		[Classdef_t("A", [
+			Method_t(Classname_t "String", "m", [], String_t "foo");
+			Method_t(Classname_t "Boolean", "m2", [Param_t(Classname_t "Int", "i");], Boolean_t true);
+			Method_t(Classname_t "B", "m3", [Param_t(Classname_t "Int", "i"); Param_t(Classname_t "C", "c")], 
+				Binop_t(Bsemicol, Binop_t(Bsemicol, Local_t(Classname_t "D", "d", Var_t "i", 
+					Condition_t(Binop_t(Beq, Var_t "c", String_t "foo"), Boolean_t true, Boolean_t false)), 
+				AttrAffect_t("a", Var_t "c")), Binop_t(Badd, Var_t "a", Binop_t(Bmul, Int_t 2, Var_t "c"))));
+		])]
+		"methodDefinition.mjava"
+
+let test_cast _ = 
+	build_success_test
+		[Expr_t(Binop_t(Badd, Unop_t(Uminus, Cast_t(Classname_t "A", Var_t "a")), Var_t "b"));
+		 Expr_t(Binop_t(Badd, Cast_t(Classname_t "A", Var_t "a"), Var_t "b"));
+		 Expr_t(AttrAffect_t("a", Binop_t(Bor, Cast_t(Classname_t "Boolean", Int_t 1), Boolean_t true)));
+		 Expr_t(Local_t(Classname_t "A", "a", String_t "foo", Binop_t(Badd, 
+		 	Cast_t(Classname_t "Int", Int_t 1), Int_t 1)));]
+		"cast.mjava"
+
+let test_instanceof _ =
+	build_success_test
+		[Expr_t(Instanceof_t(Var_t "a", Classname_t "Boolean"));
+		 Expr_t(Instanceof_t(Cast_t(Classname_t "A", Var_t "a"), Classname_t "B"));
+		 Expr_t(Binop_t(Badd, Var_t "a", Instanceof_t(Var_t "b", Classname_t "A")));
+		 Expr_t(AttrAffect_t("a", Instanceof_t(Var_t "a", Classname_t "B")));
+		 Expr_t(Local_t(Classname_t "Boolean", "b", Int_t 3, Instanceof_t(Var_t "b", Classname_t "Int")));	]
+		"instanceof.mjava"
 
 (***************************************************************************)
 (* Test suite *)
@@ -275,6 +364,15 @@ let suite =
 		 "attrAffect">:: test_attr_affect;
 
 		 "operationsPriorities">:: test_operations_priorities;
+		 "exprUnop">:: test_expr_unop;
+		 "attrAffectInExpr">:: test_attr_affect_in_expr;
+		 "localVars">:: test_local_vars;
+
+		 "methodCall">:: test_method_calls;
+		 "methodDefinition">:: test_method_definition;
+
+		 "cast">:: test_cast;
+		 "instanceof">:: test_instanceof;
 		]
 
 

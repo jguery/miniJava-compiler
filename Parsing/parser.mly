@@ -27,10 +27,9 @@
 
 
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
-%left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
 %left SEMICOL		/* Allows to link expressions before defining a new one (in structure_tree) */
-%left ATTRAFFECT /* The semicolon at the end of an attribute affectation MUST end the affectation, 
-					otherwise we wouldn't a lot of work in a method */
+%left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
+%left ATTRAFFECT /* The semicolon at the end of an attribute affectation ends the affectation */
 %left MINUS PLUS OR	/* The usual calc precedence levels */
 %left BOPSNUM BOPSBOOL	/* Don't really understand their purpose, since MINUS, TIMES, etc are here... */ 
 %left TIMES DIV MOD AND
@@ -132,7 +131,7 @@ terminal_expr:
 
 %inline bopother:
  | INF 		{ Binf }
- | INFEQ	{ BinfEq }
+ | INFEQ	{ Binfeq }
  | SUP		{ Bsup }
  | SUPEQ	{ Bsupeq }
  | DIFFEQ	{ Bdiff }

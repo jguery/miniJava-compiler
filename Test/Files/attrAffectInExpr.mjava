@@ -22,3 +22,5 @@ Expr {
 	}
 }
 */
+
+A a = c = B b = "foo" in b in a

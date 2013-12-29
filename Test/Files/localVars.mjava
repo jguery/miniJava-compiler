@@ -1,0 +1,19 @@
+// The semicolons at the end break the local affection
+A a = true;this;"tr" in 1;1;true;v
+
+// To continue the affectation, we do the following:
+A a = true;this;"tr" in (1;1;true;v)
+
+// The last plus concerns "1", not "A a = 1+1 in 1"
+// In other words, priority is given to the plus and not to the affectation
+A a = 1+1 in 1+1
+A a = 1 in 1-1
+A a = 1 in 1*1
+A a = 1 in 1/1
+A a = 1 in 1%1
+A a = 1 in 1>1
+A a = 1 in 1>=1
+A a = 1 in 1<1
+A a = 1 in 1<=1
+A a = 1 in 1==1
+A a = 1 in 1!=1
