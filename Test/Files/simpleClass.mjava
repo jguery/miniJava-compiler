@@ -1,2 +1,2 @@
-class A extends B {
+class A {
 }

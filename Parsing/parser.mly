@@ -31,10 +31,10 @@
 %left SEMICOL		/* Allows to link expressions before defining a new one (in structure_tree) */
 %left ATTRAFFECT /* The semicolon at the end of an attribute affectation MUST end the affectation, 
 					otherwise we wouldn't a lot of work in a method */
-%left MINUS PLUS 	/* The usual calc precedence levels */
-%left TIMES DIV MOD
-%left OR
-%left AND
+%left MINUS PLUS OR	/* The usual calc precedence levels */
+%left BOPSNUM BOPSBOOL	/* Don't really understand their purpose, since MINUS, TIMES, etc are here... */ 
+%left TIMES DIV MOD AND
+%left BOPSOTHER
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
 
@@ -80,7 +80,11 @@ param:
 expr:
  | a=loc(LIDENT) AFFECT e=loc(expr) %prec ATTRAFFECT { AttrAffect(a, e) }
  | u=loc(unop) e=loc(expr) %prec UNOPS { Unop(u, e) }
- | e1=loc(expr) b=loc(bop) e2=loc(middle_expr) { Binop(b, e1, e2) }
+ | e1=loc(expr) b=loc(bopnum) e2=loc(expr) %prec BOPSNUM { Binop(b, e1, e2) }
+ | e1=loc(expr) b=loc(bopbool) e2=loc(expr) %prec BOPSBOOL { Binop(b, e1, e2) }
+ | e1=loc(expr) b=loc(bopother) e2=loc(expr) %prec BOPSOTHER { Binop(b, e1, e2) }
+ | e1=loc(expr) b=loc(SEMICOL) e2=loc(expr) %prec SEMICOL 
+ 	{ Binop(Located.mk_elem Bsemicol (Located.loc_of b), e1, e2) }
  | IF LPAR e1=loc(expr) RPAR LBRAK e2=loc(expr) RBRAK ELSE LBRAK e3=loc(expr) RBRAK 
  	{ Condition(e1, e2, e3) }
  | e=middle_expr { e }
@@ -115,20 +119,24 @@ terminal_expr:
  | DIFF 	{ Udiff }
  | MINUS  	{ Uminus }
 
-%inline bop:
- | SEMICOL  { Bsemicol }
+%inline bopnum:
+ | MINUS    { Bsub }
+ | PLUS     { Badd }
+ | TIMES    { Bmul }
+ | DIV      { Bdiv }
+ | MOD      { Bmod }
+
+%inline bopbool:
+ | AND		{ Band }
+ | OR 		{ Bor }
+
+%inline bopother:
  | INF 		{ Binf }
  | INFEQ	{ BinfEq }
  | SUP		{ Bsup }
  | SUPEQ	{ Bsupeq }
  | DIFFEQ	{ Bdiff }
  | EQUALS	{ Beq }
- | MINUS    { Bsub }
- | PLUS     { Badd }
- | TIMES    { Bmul }
- | DIV      { Bdiv }
- | MOD      { Bmod }
- | AND		{ Band }
- | OR 		{ Bor }
+
 
 %%

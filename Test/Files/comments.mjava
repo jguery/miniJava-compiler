@@ -1,11 +1,12 @@
-/* Un long commentaire /*
-Pas de nested comment
+/* A long comment /*
+No nested comment
 */
 true
-// Autre commentaire
+// Other comment
 false
 
-// Pas de /* nested comment 
+String s = /* Comment */ "foo" in "bar"
 
-// Commentaire sur la dernière ligne
-/* truc 
+// No /* nested comment
+
+// Comment on the last line

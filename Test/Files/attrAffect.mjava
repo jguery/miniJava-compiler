@@ -1,9 +1,10 @@
 class A extends B {
 	Int i = 10
-	String s = "foobar"
 	Boolean b = true
+	String s = "foobar"
 	String d = null
 	A a = this
-	B b = 
+	B bi = 
 		C c = false in 10
+	Int cond = if (true) {1} else {2}
 }
