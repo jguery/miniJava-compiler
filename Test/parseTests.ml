@@ -146,7 +146,7 @@ let parse_file str =
 (***************************************************************************)
 (* Utils for building tests *)
 let build_path filename = 
-	"Test/Files/" ^ filename
+	"Test/Parsing/" ^ filename
 
 let build_success_test expected_struct filename = 
 	assert_equal expected_struct (parse_file (build_path filename))
