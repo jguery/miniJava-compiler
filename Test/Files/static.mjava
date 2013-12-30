@@ -1,27 +1,14 @@
 class A {
 	static String b
 	static Boolean foo = true
-	static Boolean method(Int i) {
+	static Boolean method(A a) {
 		b = "bar";
-		this.m2();
+		a.m2();
 		true
 	}
-	/* This static method should read:
-	STATIC METHOD Return Type: Boolean, name: method, params: (Param Int i, ), 
-	Expr {
-		Expr {
-			Expr {
-				AttrName: b, value: Expr {Str(bar)}
-			} 
-			SEMICOL Expr {
-				CALL Object: Expr {this}, name: m2, args: ()
-			}
-		} 
-		SEMICOL Expr {Bool(true)}
-	}
-	*/
+
 	Int m2() {
-		A.method(3)
+		A.method(new A)
 	}
 
 }

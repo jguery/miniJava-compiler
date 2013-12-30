@@ -1,1 +1,2 @@
 new A
+A a = new A in a.m()

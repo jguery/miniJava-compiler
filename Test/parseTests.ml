@@ -327,6 +327,7 @@ let test_method_definition _ =
 		])]
 		"methodDefinition.mjava"
 
+(* Test cast operator, its ambiguities *)
 let test_cast _ = 
 	build_success_test
 		[Expr_t(Binop_t(Badd, Unop_t(Uminus, Cast_t(Classname_t "A", Var_t "a")), Var_t "b"));
@@ -336,14 +337,33 @@ let test_cast _ =
 		 	Cast_t(Classname_t "Int", Int_t 1), Int_t 1)));]
 		"cast.mjava"
 
+(* Test instanceof operator, its ambiguities *)
 let test_instanceof _ =
 	build_success_test
 		[Expr_t(Instanceof_t(Var_t "a", Classname_t "Boolean"));
 		 Expr_t(Instanceof_t(Cast_t(Classname_t "A", Var_t "a"), Classname_t "B"));
 		 Expr_t(Binop_t(Badd, Var_t "a", Instanceof_t(Var_t "b", Classname_t "A")));
 		 Expr_t(AttrAffect_t("a", Instanceof_t(Var_t "a", Classname_t "B")));
-		 Expr_t(Local_t(Classname_t "Boolean", "b", Int_t 3, Instanceof_t(Var_t "b", Classname_t "Int")));	]
+		 Expr_t(Local_t(Classname_t "Boolean", "b", Int_t 3, Instanceof_t(Var_t "b", Classname_t "Int")));]
 		"instanceof.mjava"
+
+(* Not much to test, the new operator is pretty straightforward, no ambiguity *)
+let test_new_operator _ = 
+	build_success_test
+		[Expr_t(Instance_t(Classname_t "A"));
+		 Expr_t(Local_t(Classname_t "A", "a", Instance_t(Classname_t "A"), MethodCall_t(Var_t "a", "m", [])));]
+		"new.mjava"
+
+let test_static_operator _ = 
+	build_success_test
+		[Classdef_t("A", [StaticAttr_t(Classname_t "String", "b");
+			StaticAttrWithValue_t(Classname_t "Boolean", "foo", Boolean_t true);
+			StaticMethod_t(Classname_t "Boolean", "method", [Param_t(Classname_t "A", "a")], 
+				Binop_t(Bsemicol, Binop_t(Bsemicol, AttrAffect_t("b", String_t "bar"), 
+					MethodCall_t(Var_t "a", "m2", [])), Boolean_t true));
+			Method_t(Classname_t "Int", "m2", [], StaticMethodCall_t(Classname_t "A", "method", 
+				[Instance_t(Classname_t "A")]));]);]
+		"static.mjava"
 
 (***************************************************************************)
 (* Test suite *)
@@ -373,6 +393,10 @@ let suite =
 
 		 "cast">:: test_cast;
 		 "instanceof">:: test_instanceof;
+
+		 "newInstance">:: test_new_operator;
+
+		 "static">:: test_static_operator;
 		]
 
 
