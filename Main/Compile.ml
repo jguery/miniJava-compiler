@@ -15,10 +15,7 @@ let execute lexbuf verbose =
 	    end; *)
 	    print_string (string_of_structure_tree l);
 	    print_endline ("Type :");
-
 	    print_string (string_of_expr_types (type_of_structure_tree (type_structure_tree l)));
-
-	   	(* print_string (string_of_expr_type (type_of_expr ((type_structure_tree l)))); *)
 	   	print_newline();
 	    (* D'autres opérations *)
 	    exit 0
