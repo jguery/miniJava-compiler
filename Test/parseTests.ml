@@ -139,7 +139,7 @@ let parse_file str =
 	    print_endline ("\n====================");
 	    let res = structure_tree nexttoken lexbuf in
 	    	close_in (input_file);
-	    	print_structure_tree res;
+	    	print_string (string_of_structure_tree res);
 	    	strip_location res
 
 
