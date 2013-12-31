@@ -9,7 +9,7 @@ type unop =
   | Uminus
 
 type classname =
-  | Classname of string Located.t (* Name of a class, which has to be defined, otherwise the compiler will fail (later)  *)
+  | Classname of string Located.t (* Name of a class, which has to be defined, otherwise the compiler will fail (later) *)
   (*| IntType 
   | BooleanType
   | StringType *)
