@@ -8,4 +8,5 @@ exception PError of error * Location.t
 
 let string_of_error = function
 	| SyntaxError -> "Syntax error"
-	| TypeError(exp, real) -> "Type error: expected type " ^ exp ^ ", but got type " ^ real
+	| TypeError(exp, real) -> "Type error: This expression has type " ^ real 
+		^ ", but an expression was expected of type " ^ exp

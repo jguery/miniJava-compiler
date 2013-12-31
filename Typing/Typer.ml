@@ -94,7 +94,7 @@ let rec type_of_structure_tree tree =
 (**************************************************************************************************)
 (******************* These functions translate a structure into a typed structure *****************)
 
-(* This function receives a non-located expr *)
+(* This function receives a non-located expr and returns a non-located typed_expr *)
 let rec type_expr = function
 	| Int i -> TypedInt (i, IntType)
 	| Boolean b -> TypedBoolean (b, BooleanType)
@@ -113,6 +113,7 @@ let rec type_expr = function
 			TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 		)
 
+(* This function receives a located list of class_or_expr, and returns a located list of typed_class_or_expr *)
 let rec type_structure_tree tree = 
 	(* This inner function receives a non-located class_or_expr *)
 	let rec type_structure = function
