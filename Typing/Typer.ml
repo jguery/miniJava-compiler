@@ -8,14 +8,15 @@ type exprType =
 	| IntType
 	| BooleanType
 	| StringType
-	| Custom of string
+	| CustomType of string
 
 (* Do we need location info ? Don't add it for now *)
 type methodType = {
 	name : string;
 	return : exprType;
 	static : bool;
-	params : exprType list
+	cl : exprType;
+	params : exprType list;
 }
 
 type classTypeEnv = {
@@ -69,7 +70,7 @@ let string_of_expr_type = function
 	| IntType -> "Int"
 	| BooleanType -> "Boolean"
 	| StringType -> "String"
-	| Custom s -> s
+	| CustomType s -> s
 
 let rec string_of_expr_types = function
 	| [] -> ""
@@ -123,7 +124,7 @@ let type_of_classname currentClassEnv cn = match cn with
 	| Classname s when (compare (Located.elem_of s) "Int") == 0 ->  IntType
 	| Classname s when (compare (Located.elem_of s) "Boolean") == 0 -> BooleanType
 	| Classname s when (compare (Located.elem_of s) "String") == 0 -> StringType
-	| Classname s -> Custom (Located.elem_of s) 	
+	| Classname s -> CustomType (Located.elem_of s) 	
 		(* TODO: check if the type already is in the env. Or later ? Since 
 		classes of a same file are supposed to know each other recursively. 
 		Yet, a parent needs to be defined before, and so we need to check to add
@@ -140,13 +141,14 @@ let rec build_params_env currentClassEnv p =
 (* This function builds the methods definition environment of a class. 
 The param is a located list of attr_or_methods *)
 (* It returns a list of methodType *)
-let rec build_methods_env currentClassEnv elems =
+let rec build_methods_env currentClassEnv classname elems =
 	(* This inner function receives a non-located method, 
 	which is either a Method or a StaticMethod. It returns a methodType *)
 	let build_method_env = function
 		| Method(r, n, p, _) -> {name = Located.elem_of n; 
 			return = type_of_classname currentClassEnv (Located.elem_of r); 
 			static = false;
+			cl = CustomType classname;
 			params = (build_params_env currentClassEnv p)}
 		(* | StaticMethod(r, n, p, _) -> *)
 	in match elems with 
@@ -154,11 +156,11 @@ let rec build_methods_env currentClassEnv elems =
 	| t::q -> (match (Located.elem_of t) with 
 				(* The item is a method, we check its environment *)
 			| Method(_, _, _, _) -> 
-				(build_method_env (Located.elem_of t))::(build_methods_env currentClassEnv q)
+				(build_method_env (Located.elem_of t))::(build_methods_env currentClassEnv classname q)
 			| StaticMethod(_, _, _, _) -> 
-				(build_method_env (Located.elem_of t))::(build_methods_env currentClassEnv q)
+				(build_method_env (Located.elem_of t))::(build_methods_env currentClassEnv classname q)
 				(* The item is not a method, don't add it to the methods environment *)
-			| _ -> build_methods_env currentClassEnv q
+			| _ -> build_methods_env currentClassEnv classname q
 		)	 
 
 (* This function builds the classes definition environment of the located structured tree in param *)
@@ -168,10 +170,11 @@ let build_classes_env tree =
 	which is either a Classdef or a ClassdefWithParent. It returns a classTypeEnv *)
 	let rec build_class_env currentClassEnv c = match c with 
 		| Classdef(n, l) -> {name = Located.elem_of n ; parent = ObjectType ; 
-			methods = (build_methods_env currentClassEnv l)}
+			methods = (build_methods_env currentClassEnv (Located.elem_of n) l)}
 		| ClassdefWithParent(n, p, l) -> {name = Located.elem_of n ; 
 			parent = type_of_classname currentClassEnv (Located.elem_of p) ;
-			methods = (methods_of_type currentClassEnv p)@(build_methods_env currentClassEnv l)}
+			methods = (methods_of_type currentClassEnv p)
+				@(build_methods_env currentClassEnv (Located.elem_of n) l)}
 			(* TODO: handle method redefinition *)
 	in let rec build_rec_classes_env env tr = match tr with 
 		| [] -> env

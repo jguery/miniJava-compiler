@@ -62,6 +62,7 @@ let test_basic_class _ =
 			name="m";
 			return=IntType;
 			static=false;
+			cl=CustomType "A";
 			params=[]
 		};]}]
 		(*  class A { Int m() {..} } *)
@@ -73,6 +74,7 @@ let test_basic_class _ =
 			name="m";
 			return=BooleanType;
 			static=false;
+			cl=CustomType "A";
 			params=[StringType;]
 		};]}]
 		(*  class A { Int m(String s) {..} } *)
@@ -84,7 +86,8 @@ let test_basic_class _ =
 			name="m";
 			return=BooleanType;
 			static=false;
-			params=[StringType; Custom "B"]
+			cl=CustomType "A";
+			params=[StringType; CustomType "B"]
 		};]}]
 		(*  class A { Int m(String s, B b) {..} } *)
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String"; mk_param "B"];]];
@@ -95,11 +98,13 @@ let test_basic_class _ =
 			name="m";
 			return=BooleanType;
 			static=false;
-			params=[StringType; Custom "B"]
+			cl=CustomType "A";
+			params=[StringType; CustomType "B"]
 		};{
 			name="m2";
 			return=StringType;
 			static=false;
+			cl=CustomType "A";
 			params=[]
 		};]}]
 		(*  class A { Boolean m(String s, B b) {..} String m2() {..} } *)
@@ -119,16 +124,19 @@ let test_many_classes _ =
 			name="m";
 			return=BooleanType;
 			static=false;
-			params=[StringType; Custom "B"]
+			cl=CustomType "A";
+			params=[StringType; CustomType "B"]
 		};{
 			name="m2";
 			return=StringType;
 			static=false;
+			cl=CustomType "A";
 			params=[]
 		};]}; {name="B"; parent=ObjectType; methods=[{
 			name="m3";
-			return=Custom "A";
+			return=CustomType "A";
 			static=false;
+			cl=CustomType "B";
 			params=[IntType;]
 		};]};]
 		(*  class A { Boolean m(String s, B b) {..} String m2() {..} } *)
@@ -141,7 +149,7 @@ let test_class_with_parent _ =
 	build_success_test
 		(* class A {} class B extends A {} *)
 		[{name="A"; parent=ObjectType; methods=[]};
-		 {name="B"; parent=Custom("A"); methods=[]}]
+		 {name="B"; parent=CustomType("A"); methods=[]}]
 		[mk_class "A" []; mk_class_p "B" "A" []];
 
 	(* Class A isn't defined *)
@@ -156,17 +164,20 @@ let test_class_with_parent _ =
 				name="m";
 				return=BooleanType;
 				static=false;
+				cl=CustomType "A";
 				params=[]
 			};]};
-		 {name="B"; parent=Custom("A"); methods=[{
+		 {name="B"; parent=CustomType("A"); methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
+				cl=CustomType "A";
 				params=[]
 			};{
 				name="m2";
 				return=IntType;
 				static=false;
+				cl=CustomType "B";
 				params=[IntType]
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" []]; mk_class_p "B" "A" [mk_method "Int" "m2" [mk_param "Int"]]]
