@@ -64,13 +64,13 @@ let string_of_bop b = match b with
   | Bsupeq -> " SUPEQ "
   | Bdiff -> " DIFF "
   | Beq -> " EQ "
-    | Badd -> " ADD "
-    | Bsub -> " SUB "
-    | Bmul -> " MUL "
-    | Bdiv -> " DIV "
-    | Bmod -> " MOD "
-    | Band -> " AND "
-    | Bor -> " OR "
+  | Badd -> " ADD "
+  | Bsub -> " SUB "
+  | Bmul -> " MUL "
+  | Bdiv -> " DIV "
+  | Bmod -> " MOD "
+  | Band -> " AND "
+  | Bor -> " OR "
 
 let string_of_classname = function
   | Classname cn -> Located.elem_of cn

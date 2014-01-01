@@ -13,4 +13,4 @@ Install Ounit through opam:
 opam install ounit.2.0.0
 
 Then, to launch the unit tests:
-ocamlbuild -use-ocamlfind -pkgs oUnit parseTests.byte --
+ocamlbuild -use-ocamlfind -pkgs oUnit parseTests.d.byte --
