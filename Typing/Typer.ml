@@ -15,7 +15,7 @@ type methodType = {
 	name : string;
 	return : exprType;
 	static : bool;
-	cl : exprType;
+	mutable cl : exprType;
 	params : exprType list;
 }
 
@@ -24,6 +24,17 @@ type classTypeEnv = {
 	parent: exprType;
 	methods : methodType list
 }
+
+(* Copy a list of methodType structures *)
+let rec copy_methods_types_list = function
+	| [] -> []
+	| t::q -> t.cl; (* Hack to recognize methodType *) {
+		return = t.return;
+		name = t.name;
+		static = t.static;
+		cl = t.cl;
+		params = t.params;
+	}::(copy_methods_types_list q)
 
 (**************************************************************************************************)
 (********** Redifinition of the parsing structure, to which we add the type information ***********)
@@ -67,14 +78,11 @@ type typed_class_or_expr =
 
 
 let string_of_expr_type = function
+	| ObjectType -> "Object"
 	| IntType -> "Int"
 	| BooleanType -> "Boolean"
 	| StringType -> "String"
 	| CustomType s -> s
-
-let rec string_of_expr_types = function
-	| [] -> ""
-	| t::q -> (string_of_expr_type t) ^ "\n" ^ (string_of_expr_types q)
 
 let make_error expr exp_type real_type = 
 	raise (PError(
@@ -111,24 +119,24 @@ let rec type_of_structure_tree tree =
 (**************************************************************************************************)
 (******************** These functions build the classes definition environment ********************)
 
-(* This function takes a class environment and a located classname and
-returns the methods associated to the classname in the env *)
-let rec methods_of_type currentClassEnv locCn = match currentClassEnv with 
-	| [] -> raise (PError(Undefined(string_of_classname (Located.elem_of locCn)), Located.loc_of locCn))
-	| t::q -> (match (Located.elem_of locCn) with
-			| Classname s when (compare (Located.elem_of s) t.name) == 0 -> t.methods
-			| _ -> methods_of_type q locCn
-		)
-
 let type_of_classname currentClassEnv cn = match cn with 
-	| Classname s when (compare (Located.elem_of s) "Int") == 0 ->  IntType
-	| Classname s when (compare (Located.elem_of s) "Boolean") == 0 -> BooleanType
-	| Classname s when (compare (Located.elem_of s) "String") == 0 -> StringType
+	| Classname s when (Located.elem_of s) = "Int" ->  IntType
+	| Classname s when (Located.elem_of s) = "Boolean" -> BooleanType
+	| Classname s when (Located.elem_of s) = "String" -> StringType
 	| Classname s -> CustomType (Located.elem_of s) 	
 		(* TODO: check if the type already is in the env. Or later ? Since 
 		classes of a same file are supposed to know each other recursively. 
 		Yet, a parent needs to be defined before, and so we need to check to add
 		the parents methods *)
+
+(* This function takes a class environment and a located classname and
+returns the methods associated to the classname in the env *)
+let rec methods_of_type currentClassEnv locCn = match currentClassEnv with 
+	| [] -> raise (PError(Undefined(string_of_classname (Located.elem_of locCn)), Located.loc_of locCn))
+	| t::q -> (match (Located.elem_of locCn) with
+			| Classname s when (Located.elem_of s) = t.name -> t.methods
+			| _ -> methods_of_type q locCn
+		)
 
 (* This function builds a list of exprType, based on a list of params *)
 let rec build_params_env currentClassEnv p = 
@@ -138,29 +146,50 @@ let rec build_params_env currentClassEnv p =
 	| [] -> []
 	| t::q -> (build_param_env (Located.elem_of t))::(build_params_env currentClassEnv q)
 
+(* This function receives a non-located method and the method environment. 
+It returns this environment updated with the new method. *)
+let add_method_to_env currentClassEnv methodsEnv classname m = 
+	(* TODO: error if redefinition of a method of the current class 
+	(defined twice) ? Or not, juste overwrite... *)
+	let rec check_env = function 
+		| [] -> (match m with 
+				| Method(r, n, p, _) -> {name = Located.elem_of n; 
+					return = type_of_classname currentClassEnv (Located.elem_of r); 
+					static = false;
+					cl = CustomType classname;
+					params = (build_params_env currentClassEnv p)}::methodsEnv
+				(* | StaticMethod(r, n, p, _) -> *)
+			)
+		| t::q -> t.cl; (* Hack to make sure t is recognized as a methodType *)
+			(match m with
+				| Method(r, n, p, _) when ((Located.elem_of n) = t.name 
+					&& (type_of_classname currentClassEnv (Located.elem_of r)) = t.return
+					&& (build_params_env currentClassEnv p) = t.params) -> 
+					(t.cl <- CustomType classname; methodsEnv)
+				(* | StaticMethod(r, n, p, _) -> *)
+				| _ -> check_env q
+			)
+	in check_env methodsEnv 
+
 (* This function builds the methods definition environment of a class. 
 The param is a located list of attr_or_methods *)
 (* It returns a list of methodType *)
-let rec build_methods_env currentClassEnv classname elems =
-	(* This inner function receives a non-located method, 
-	which is either a Method or a StaticMethod. It returns a methodType *)
-	let build_method_env = function
-		| Method(r, n, p, _) -> {name = Located.elem_of n; 
-			return = type_of_classname currentClassEnv (Located.elem_of r); 
-			static = false;
-			cl = CustomType classname;
-			params = (build_params_env currentClassEnv p)}
-		(* | StaticMethod(r, n, p, _) -> *)
-	in match elems with 
-	| [] -> []
+let rec build_methods_env currentClassEnv methodsEnv classname elems = match elems with 
+	| [] -> List.rev methodsEnv (* Reverse to retrieve the order of definition *)
 	| t::q -> (match (Located.elem_of t) with 
 				(* The item is a method, we check its environment *)
 			| Method(_, _, _, _) -> 
-				(build_method_env (Located.elem_of t))::(build_methods_env currentClassEnv classname q)
+				build_methods_env currentClassEnv 
+					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
+					classname 
+					q
 			| StaticMethod(_, _, _, _) -> 
-				(build_method_env (Located.elem_of t))::(build_methods_env currentClassEnv classname q)
+				build_methods_env currentClassEnv 
+					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
+					classname 
+					q
 				(* The item is not a method, don't add it to the methods environment *)
-			| _ -> build_methods_env currentClassEnv classname q
+			| _ -> build_methods_env currentClassEnv methodsEnv classname q
 		)	 
 
 (* This function builds the classes definition environment of the located structured tree in param *)
@@ -170,12 +199,15 @@ let build_classes_env tree =
 	which is either a Classdef or a ClassdefWithParent. It returns a classTypeEnv *)
 	let rec build_class_env currentClassEnv c = match c with 
 		| Classdef(n, l) -> {name = Located.elem_of n ; parent = ObjectType ; 
-			methods = (build_methods_env currentClassEnv (Located.elem_of n) l)}
+			methods = (build_methods_env currentClassEnv [] (Located.elem_of n) l)}
 		| ClassdefWithParent(n, p, l) -> {name = Located.elem_of n ; 
 			parent = type_of_classname currentClassEnv (Located.elem_of p) ;
-			methods = (methods_of_type currentClassEnv p)
-				@(build_methods_env currentClassEnv (Located.elem_of n) l)}
-			(* TODO: handle method redefinition *)
+			methods = 
+				(* Use copy_methods_types_list to get an independent copy of the parent methods *)
+				build_methods_env currentClassEnv 
+					(copy_methods_types_list (methods_of_type currentClassEnv p)) 
+					(Located.elem_of n) l 
+			}
 	in let rec build_rec_classes_env env tr = match tr with 
 		| [] -> env
 		| t::q -> (match (Located.elem_of t) with 

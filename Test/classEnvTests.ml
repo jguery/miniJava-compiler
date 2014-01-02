@@ -10,6 +10,21 @@ exception TestError of Errors.error
 
 (*************************************************************************************)
 (***************************** Utils for building tests ******************************)
+
+let rec string_of_expr_types = function
+	| [] -> ""
+	| t::q -> (string_of_expr_type t) ^ ", " ^ (string_of_expr_types q)
+
+let rec string_of_methods_env = function
+	| [] -> ""
+	| t::q -> t.cl;"Name " ^ t.name ^ " class " ^ (string_of_expr_type t.cl) 
+		^ " params [" ^ (string_of_expr_types t.params) ^ "]; " ^ (string_of_methods_env q) 
+
+let rec string_of_env = function
+	| [] -> ""
+	| t::q -> "Class " ^ t.name ^ " parent " ^ (string_of_expr_type t.parent) 
+		^ " methods : [" ^ (string_of_methods_env t.methods) ^ "]\n" ^ (string_of_env q)
+
 let mk_none x = 
 	Located.mk_elem x (Location.none)
 
@@ -27,7 +42,8 @@ let mk_class_p classname parent methods =
 	mk_none (ClassdefWithParent(mk_none classname, mk_none (Classname(mk_none parent)), methods))
 
 let build_success_test expEnv structureTree =
-	print_endline (string_of_structure_tree structureTree);
+	print_endline ((string_of_structure_tree structureTree) ^ " => " 
+		^ (string_of_env (Typer.build_classes_env structureTree)));
 	print_endline "========================================";	
 	assert_equal expEnv (Typer.build_classes_env structureTree)
 
@@ -182,6 +198,78 @@ let test_class_with_parent _ =
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" []]; mk_class_p "B" "A" [mk_method "Int" "m2" [mk_param "Int"]]]
 
+let test_method_redefinition _ =
+	(* Redefinition of a parent method *)
+	build_success_test
+		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
+		[{name="A"; parent=ObjectType; methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[IntType]
+			};]};
+		 {name="B"; parent=CustomType("A"); methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "B";
+				params=[IntType]
+			};]};]
+		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
+		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"]]];
+
+	(* Not a redefinition: return type is different *)
+	build_success_test
+		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
+		[{name="A"; parent=ObjectType; methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[]
+			};]};
+		 {name="B"; parent=CustomType("A"); methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[]
+			};{
+				name="m";
+				return=IntType;
+				static=false;
+				cl=CustomType "B";
+				params=[]
+			};]};]
+		[mk_class "A" [mk_method "Boolean" "m" []]; mk_class_p "B" "A" [mk_method "Int" "m" []]];
+
+	(* Not a redefinition: params are different *)
+	build_success_test
+		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
+		[{name="A"; parent=ObjectType; methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[IntType]
+			};]};
+		 {name="B"; parent=CustomType("A"); methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[IntType]
+			};{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "B";
+				params=[StringType]
+			};]};]
+		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
+		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "String"]]]
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -191,6 +279,8 @@ let suite =
 		 "manyClasses">:: test_many_classes;
 
 		 "classWithParent">:: test_class_with_parent;
+
+		 "methodRedefinition">:: test_method_redefinition;
 		]
 
 let () =
