@@ -223,36 +223,59 @@ let build_classes_env tree =
 (**************************************************************************************************)
 (******************* These functions translate a structure into a typed structure *****************)
 
+let check_type_is exp real e = 
+	if (exp = real) then real else (make_error e exp real)
+
+(* The classname in params is located. *)
+let rec search_classname classEnv classname = 
+	let s c = 
+		if (c.name = (string_of_classname (Located.elem_of classname))) then true else false
+	in match classEnv with
+	| [] -> raise (PError(Undefined(string_of_classname (Located.elem_of classname)), 
+				Located.loc_of classname))
+	| t::q -> if (s t) then CustomType (t.name) else search_classname q classname 
+
+
 (* This function receives a non-located expr and returns a non-located typed_expr *)
-let rec type_expr env expr = match expr with
+let rec type_expr classEnv expr = 
+	let type_unop u e = 
+		let ne = type_expr classEnv (Located.elem_of e) in 
+		let bufType = match (Located.elem_of u) with
+				| Udiff -> check_type_is BooleanType (type_of_expr ne) e
+				| Uminus -> check_type_is IntType (type_of_expr ne) e
+			in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
+
+	and type_condition i t e = 
+		let ni = type_expr classEnv (Located.elem_of i) and
+		nt = type_expr classEnv (Located.elem_of t) and
+		ne = type_expr classEnv (Located.elem_of e) in
+		check_type_is BooleanType (type_of_expr ni) i;
+		TypedCondition(Located.mk_elem ni (Located.loc_of i),
+			Located.mk_elem nt (Located.loc_of t),
+			Located.mk_elem ne (Located.loc_of e),
+			check_type_is (type_of_expr nt) (type_of_expr ne) e)
+
+	in match expr with
 	| Int i -> TypedInt (i, IntType)
 	| Boolean b -> TypedBoolean (b, BooleanType)
 	| String s -> TypedString (s, StringType)
-	| Unop (u, e) -> (let ne = type_expr env (Located.elem_of e) in 
-			let bufType = match (Located.elem_of u) with
-				| Udiff -> (match (type_of_expr ne) with 
-						| BooleanType -> BooleanType
-						| _ as t -> make_error e BooleanType t
-					)
-				| Uminus -> (match (type_of_expr ne) with 
-						| IntType -> IntType
-						| _ as t -> make_error e IntType t
-					)
-			in 
-			TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
-		)
+	| Unop (u, e) -> type_unop u e
+	| Condition (i, t, e) -> type_condition i t e
+	| Instance cn -> TypedInstance(cn, search_classname classEnv cn)
+	(* | MethodCall (e, m, args) ->  *)
+  (* | MethodCall of expr Located.t * string Located.t * expr Located.t list *)
+
 
 (* This function receives a located list of class_or_expr, 
 and returns a located list of typed_class_or_expr *)
 let type_structure_tree tree = 
+	let classEnv = build_classes_env tree 
 	(* This inner function receives a non-located class_or_expr *)
-	let env = build_classes_env tree 
 	in let rec type_structure = function
-		| Expr e -> TypedExpr (Located.mk_elem (type_expr env (Located.elem_of e)) (Located.loc_of e))
+		| Expr e -> TypedExpr (Located.mk_elem (type_expr classEnv (Located.elem_of e)) (Located.loc_of e))
 	in let rec type_rec_structure_tree = function
 		| [] -> []
 		| t::q -> (Located.mk_elem (type_structure (Located.elem_of t)) (Located.loc_of t))
 				::(type_rec_structure_tree q)
 	in 
 	type_rec_structure_tree tree 
-

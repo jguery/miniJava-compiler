@@ -73,7 +73,7 @@ let string_of_bop b = match b with
   | Bor -> " OR "
 
 let string_of_classname = function
-  | Classname cn -> Located.elem_of cn
+  | Classname s -> Located.elem_of s
 
 let rec string_of_expr exp = 
   let rec string_of_exprs = function 

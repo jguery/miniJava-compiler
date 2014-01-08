@@ -268,7 +268,32 @@ let test_method_redefinition _ =
 				params=[StringType]
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
-		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "String"]]]
+		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "String"]]];
+
+	(* Not a redefinition: params are different *)
+	build_success_test
+		[{name="A"; parent=ObjectType; methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[IntType]
+			};]};
+		 {name="B"; parent=CustomType("A"); methods=[{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "A";
+				params=[IntType]
+			};{
+				name="m";
+				return=BooleanType;
+				static=false;
+				cl=CustomType "B";
+				params=[IntType; BooleanType]
+			};]};]
+		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
+		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"; mk_param "Boolean"]]]
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
