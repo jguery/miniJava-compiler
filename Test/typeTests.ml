@@ -18,39 +18,18 @@ let build_success_test expType env expr =
 	print_endline "========================================";
 	assert_equal expType (Typer.type_of_expr (Typer.type_expr env expr))
 
-let build_failure_type_test env expr expType realType =
+let build_failure_test env expr err =
 	let test _ = 
 		try 
-			print_endline ((Structure.string_of_expr expr) ^ " => Expected " 
-				^ (Typer.string_of_expr_type expType) ^ ", got " 
-				^ (Typer.string_of_expr_type realType));
+			print_endline ((Structure.string_of_expr expr) ^ " => " 
+				^ (Errors.string_of_error err));
 			print_endline "========================================";
 			Typer.type_expr env expr
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)
 	in
-	assert_raises 
-		(TestError (Errors.TypeError(
-			Typer.string_of_expr_type expType, 
-			Typer.string_of_expr_type realType
-		))) 
-		test
-
-let build_failure_defined_test env expr undefType =
-	let test _ = 
-		try 
-			print_endline ((Structure.string_of_expr expr) ^ " => Undefined " 
-				^ (Typer.string_of_expr_type undefType));
-			print_endline "========================================";
-			Typer.type_expr env expr
-		with Errors.PError (e, l) ->
-			(* Strip the location information *)
-			raise (TestError e)
-	in
-	assert_raises 
-		(TestError (Errors.Undefined(Typer.string_of_expr_type undefType))) 
-		test
+	assert_raises (TestError err) test
 
 (*************************************************************************************)
 (************************************** Tests ****************************************)
@@ -83,18 +62,16 @@ let test_unop _ =
 		[]
 		(* -10 *)
 		(Unop(mk_none Uminus, mk_none (Int (mk_none 10))));
-	build_failure_type_test
+	build_failure_test
 		[]
 		(* -true *)
 		(Unop(mk_none Uminus, mk_none (Boolean (mk_none true))))
-		IntType
-		BooleanType;
-	build_failure_type_test
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
 		[]
 		(* !10 *)
 		(Unop(mk_none Udiff, mk_none (Int (mk_none 10))))
-		BooleanType
-		IntType
+		(Errors.TypeError("Boolean", "Int"))
 
 let test_conditions _ = 
 	build_success_test
@@ -108,18 +85,16 @@ let test_conditions _ =
 		(* if (true) {"foo"} else {"bar"} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), 
 			mk_none (String (mk_none "bar"))));
-	build_failure_type_test
+	build_failure_test
 		[]
 		(* if (true) {"foo"} else {2} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), mk_none (Int (mk_none 2))))
-		StringType
-		IntType;
-	build_failure_type_test
+		(Errors.TypeError("String", "Int"));
+	build_failure_test
 		[]
 		(* if (true) {2} else {"foo"} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (Int (mk_none 2)), mk_none (String (mk_none "foo"))))
-		IntType
-		StringType
+		(Errors.TypeError("Int", "String"))
 
 let test_instance _  =
 	build_success_test
@@ -128,11 +103,81 @@ let test_instance _  =
 		 {name="A"; parent=ObjectType; methods=[]}]
 		(* new A *)
 		(Instance(mk_none (Classname (mk_none "A"))));
-	build_failure_defined_test
+	build_failure_test
 		[]
 		(* new A // undefined *)
 		(Instance(mk_none (Classname (mk_none "A"))))
-		(CustomType "A")
+		(Errors.UndefinedType("A"))
+
+let test_method_call _ = 
+	build_success_test
+		(Typer.IntType)
+		[{name="A"; parent=ObjectType; methods=[{
+			name="m";
+			return=IntType;
+			static=false;
+			cl=CustomType "A";
+			params=[]
+		};]}]
+		(* (new A).m() *)
+		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", []));
+	build_success_test
+		(Typer.CustomType "A")
+		[{name="A"; parent=ObjectType; methods=[{
+			name="m";
+			return=CustomType "A";
+			static=false;
+			cl=CustomType "A";
+			params=[]
+		};]}]
+		(* ((new A).m()).m() *)
+		(MethodCall(mk_none (MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [])), 
+			mk_none "m", []));
+	build_failure_test
+		[{name="A"; parent=ObjectType; methods=[{
+			name="m";
+			return=IntType;
+			static=false;
+			cl=CustomType "A";
+			params=[]
+		};]}]
+		(* (new A).m2() *)
+		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m2", []))
+		(Errors.UndefinedMethod("A", "m2", []));
+	build_failure_test
+		[{name="A"; parent=ObjectType; methods=[{
+			name="m";
+			return=IntType;
+			static=false;
+			cl=CustomType "A";
+			params=[]
+		};]}]
+		(* (new A).m(1) *)
+		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [mk_none (Int (mk_none 1))]))
+		(Errors.UndefinedMethod("A", "m", ["Int"]));
+	build_success_test
+		(IntType)
+		[{name="A"; parent=ObjectType; methods=[{
+			name="m";
+			return=IntType;
+			static=false;
+			cl=CustomType "A";
+			params=[IntType]
+		};]}]
+		(* (new A).m(1) *)
+		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [mk_none (Int (mk_none 1))]));
+	build_failure_test
+		[{name="A"; parent=ObjectType; methods=[{
+			name="m";
+			return=IntType;
+			static=false;
+			cl=CustomType "A";
+			params=[IntType]
+		};]}]
+		(* (new A).m(1) *)
+		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", 
+			[mk_none (Int (mk_none 1)); mk_none (Boolean (mk_none true))]))
+		(Errors.UndefinedMethod("A", "m", ["Int"; "Boolean"]))
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
@@ -143,6 +188,8 @@ let suite =
 		 "unop">:: test_unop;
 		 "condition">:: test_conditions;
 		 "instance">:: test_instance;
+
+		 "methodCall">:: test_method_call;
 		]
 
 let () =

@@ -58,7 +58,7 @@ let build_failure_test structureTree undefinedType =
 			raise (TestError e)
 	in
 	assert_raises 
-		(TestError (Errors.Undefined(undefinedType))) 
+		(TestError (Errors.UndefinedType(undefinedType))) 
 		test
 
 

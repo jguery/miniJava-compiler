@@ -1,0 +1,24 @@
+class A {
+	A m(Int i) {
+		i
+	}
+}
+class B extends A {
+	B m(Int i) {
+		i
+	}
+}
+class C {
+	B m(Int i) {
+		i
+	}
+	// Redefinition of a method inside of a class doesn't raise an error,
+	// it just erases the former method (with was really useless, but it
+	// does no harm)
+	C m(Int i) {
+		i
+	}
+}
+((new A).m(1)).m(2)
+(new B).m(2)
+(new C).m(2)
