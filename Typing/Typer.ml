@@ -10,19 +10,24 @@ type exprType =
 	| StringType
 	| CustomType of string
 
+type varType = {
+	n : string;
+	t : exprType;
+}
+
 (* Do we need location info ? Don't add it for now *)
 type methodType = {
 	name : string;
 	mutable return : exprType;
 	static : bool;
-	mutable cl : exprType;
+	mutable cl : exprType; (* Class the method belongs to. Can change in case of redefinition *)
 	params : exprType list;
 }
 
 type classTypeEnv = {
 	name : string;
 	parent: exprType;
-	methods : methodType list
+	methods : methodType list;
 }
 
 (* Copy a list of methodType structures *)
@@ -256,18 +261,18 @@ let rec get_methoddef classdef method_string args_types loc =
 
 
 (* This function receives a non-located expr and returns a non-located typed_expr *)
-let rec type_expr classEnv expr = 
+let rec type_expr classEnv varEnv expr = 
 	let type_unop u e = 
-		let ne = type_expr classEnv (Located.elem_of e) in 
+		let ne = type_expr classEnv varEnv (Located.elem_of e) in 
 		let bufType = match (Located.elem_of u) with
 				| Udiff -> check_type_is BooleanType (type_of_expr ne) e
 				| Uminus -> check_type_is IntType (type_of_expr ne) e
 		in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 
 	and type_condition i t e = 
-		let ni = type_expr classEnv (Located.elem_of i) and
-		nt = type_expr classEnv (Located.elem_of t) and
-		ne = type_expr classEnv (Located.elem_of e) in
+		let ni = type_expr classEnv varEnv (Located.elem_of i) and
+		nt = type_expr classEnv varEnv (Located.elem_of t) and
+		ne = type_expr classEnv varEnv (Located.elem_of e) in
 		check_type_is BooleanType (type_of_expr ni) i;
 		TypedCondition(Located.mk_elem ni (Located.loc_of i),
 			Located.mk_elem nt (Located.loc_of t),
@@ -277,17 +282,27 @@ let rec type_expr classEnv expr =
 	and type_method_call e m args = 
 		let rec do_l = function 
 			| [] -> []
-			| t::q -> (Located.mk_elem (type_expr classEnv (Located.elem_of t)) (Located.loc_of t))::(do_l q)
+			| t::q -> (Located.mk_elem (type_expr classEnv varEnv (Located.elem_of t)) (Located.loc_of t))::(do_l q)
 		and type_args = function
 			| [] -> []
 			| t::q -> (type_of_expr (Located.elem_of t))::(type_args q)
-		and ne = type_expr classEnv (Located.elem_of e)
+		and ne = type_expr classEnv varEnv (Located.elem_of e)
 		in let classdef = get_classdef classEnv (string_of_expr_type (type_of_expr ne)) (Located.loc_of e)
 		in let nargs = do_l args
 		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) (Located.loc_of m) 
 		in TypedMethodCall(Located.mk_elem ne (Located.loc_of e), m, nargs, methoddef.return)
 
+	and type_local_variable c v ve e =
+		let nve = type_expr classEnv varEnv (Located.elem_of ve)
+		and classname_type = type_of_classname classEnv (Located.elem_of c)
+		in let ne = type_expr classEnv ({t=check_type_is classname_type (type_of_expr nve) ve; 
+			n=(Located.elem_of v)}::varEnv) (Located.elem_of e)
+		in TypedLocal (c, v, Located.mk_elem nve (Located.loc_of ve), 
+			Located.mk_elem ne (Located.loc_of e), type_of_expr ne)
+
 	in match expr with
+  	| Null -> TypedNull
+  	| This -> TypedThis
 	| Int i -> TypedInt (i, IntType)
 	| Boolean b -> TypedBoolean (b, BooleanType)
 	| String s -> TypedString (s, StringType)
@@ -296,6 +311,9 @@ let rec type_expr classEnv expr =
 	| Instance cn -> TypedInstance(cn, CustomType ((get_classdef classEnv 
 		(string_of_classname (Located.elem_of cn)) (Located.loc_of cn)).name))
 	| MethodCall (e, m, args) -> type_method_call e m args
+	| Instanceof (e, c) -> TypedInstanceof(Located.mk_elem (type_expr classEnv varEnv (Located.elem_of e)) 
+								(Located.loc_of e), c, BooleanType)
+	| Local (c, v, ve, e) -> type_local_variable c v ve e
 
 
 (* This function receives a located list of class_or_expr, 
@@ -305,7 +323,7 @@ let type_structure_tree tree =
 	in let rec type_rec_structure_tree sub_tree =
 		(* This inner function receives a non-located class_or_expr *)
 		let type_structure = function
-			| Expr e -> TypedExpr (Located.mk_elem (type_expr classEnv (Located.elem_of e)) (Located.loc_of e))
+			| Expr e -> TypedExpr (Located.mk_elem (type_expr classEnv [] (Located.elem_of e)) (Located.loc_of e))
 		in match sub_tree with
 		| [] -> []
 		| t::q -> (match (Located.elem_of t) with 
