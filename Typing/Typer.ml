@@ -1,3 +1,8 @@
+(* A word about static methods: they are NOT put in the methods environment 
+	of a daughter class, because there is no such thing as a redefinition of 
+	a static method. Static methods MUST only be called with : A.m(). a.m(), 
+	with a being an instance of A and m a static method, will be rejected. *)
+
 open Located
 open Location
 open Errors
@@ -144,11 +149,17 @@ let type_of_classname currentClassEnv cn = match cn with
 
 (* This function takes a class environment and a located classname and
 returns the methods associated to the classname in the env *)
-let rec methods_of_type currentClassEnv locCn = match currentClassEnv with 
+let rec methods_of_type currentClassEnv withStaticMethods locCn = 
+	let rec parse_methods methods = if (withStaticMethods) then methods else
+		begin match methods with 
+			| [] -> []
+			| t::q -> if (t.static) then parse_methods q else t::(parse_methods q)
+		end
+	in match currentClassEnv with 
 	| [] -> raise (PError(UndefinedType(string_of_classname (Located.elem_of locCn)), Located.loc_of locCn))
 	| t::q -> (match (Located.elem_of locCn) with
-			| Classname s when (Located.elem_of s) = t.name -> t.methods
-			| _ -> methods_of_type q locCn
+			| Classname s when (Located.elem_of s) = t.name -> parse_methods t.methods
+			| _ -> methods_of_type q withStaticMethods locCn
 		)
 
 (* This function takes a class environment and a located classname and
@@ -174,14 +185,21 @@ let add_method_to_env currentClassEnv methodsEnv classname m =
 	(* TODO: error if redefinition of a method of the current class 
 	(defined twice) ? Or not, juste overwrite... *)
 	let rec check_env = function 
+		(* Method doesn't already exist in the methodsEnv, we add it *)
 		| [] -> (match m with 
 				| Method(r, n, p, _) -> {name = Located.elem_of n; 
 					return = type_of_classname currentClassEnv (Located.elem_of r); 
 					static = false;
 					cl = CustomType classname;
 					params = (build_params_env currentClassEnv p)}::methodsEnv
-				(* | StaticMethod(r, n, p, _) -> *)
+				| StaticMethod(r, n, p, _) -> {name = Located.elem_of n; 
+					return = type_of_classname currentClassEnv (Located.elem_of r); 
+					static = true;
+					cl = CustomType classname;
+					params = (build_params_env currentClassEnv p)}::methodsEnv
 			)
+		(* Method already exists in the methodsEnv, we redefine it 
+			(sort of in some cases, covered by tests) *)
 		| t::q -> t.cl; (* Hack to make sure t is recognized as a methodType *)
 			(match m with
 				| Method(r, n, p, _) when ((Located.elem_of n) = t.name 
@@ -190,7 +208,12 @@ let add_method_to_env currentClassEnv methodsEnv classname m =
 					(t.cl <- CustomType classname;
 					t.return <- type_of_classname currentClassEnv (Located.elem_of r);
 					methodsEnv;)
-				(* | StaticMethod(r, n, p, _) -> *)
+				| StaticMethod(r, n, p, _) when ((Located.elem_of n) = t.name 
+					&& (build_params_env currentClassEnv p) = t.params) -> 
+					(* Redefinition of a method *)
+					(t.cl <- CustomType classname;
+					t.return <- type_of_classname currentClassEnv (Located.elem_of r);
+					methodsEnv;)
 				| _ -> check_env q
 			)
 	in check_env methodsEnv 
@@ -240,7 +263,7 @@ let build_classes_env tree =
 			(* Use copy_methods_types_list to get an independent copy of the parent methods *)
 			(* Yet, no need to copy the attributes list since we never change them in a son class *)
 			build_methods_and_attrs_env currentClassEnv 
-					(copy_methods_types_list (methods_of_type currentClassEnv p)) 
+					(copy_methods_types_list (methods_of_type currentClassEnv false p)) 
 					(attributes_of_type currentClassEnv p) 
 					(Located.elem_of n) l 
 			in 
@@ -281,9 +304,9 @@ let rec get_classdef classesEnv classname_string loc =
 	| t::q -> if (s t) then t else get_classdef q classname_string loc
 
 (* args_types is a list of exprType *)
-let rec get_methoddef classdef method_string args_types loc = 
+let rec get_methoddef classdef method_string args_types static loc = 
 	let s c = 
-		c.cl; if (c.name = method_string && c.params = args_types) then true else false
+		c.cl; if (c.name = method_string && c.params = args_types && c.static = static) then true else false
 	in let rec list_of_string_types = function
 		| [] -> []
 		| t::q -> (string_of_expr_type t)::(list_of_string_types q)
@@ -323,14 +346,15 @@ let rec type_expr classesEnv varEnv expr =
 	and type_method_call e m args = 
 		let rec do_l = function 
 			| [] -> []
-			| t::q -> (Located.mk_elem (type_expr classesEnv varEnv (Located.elem_of t)) (Located.loc_of t))::(do_l q)
+			| t::q -> (Located.mk_elem (type_expr classesEnv varEnv (Located.elem_of t)) 
+				(Located.loc_of t))::(do_l q)
 		and type_args = function
 			| [] -> []
 			| t::q -> (type_of_expr (Located.elem_of t))::(type_args q)
 		and ne = type_expr classesEnv varEnv (Located.elem_of e)
 		in let classdef = get_classdef classesEnv (string_of_expr_type (type_of_expr ne)) (Located.loc_of e)
 		in let nargs = do_l args
-		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) (Located.loc_of m) 
+		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) false (Located.loc_of m) 
 		in TypedMethodCall(Located.mk_elem ne (Located.loc_of e), m, nargs, methoddef.return)
 
 	and type_local_variable c v ve e =
@@ -375,7 +399,7 @@ let rec type_params_list classesEnv params = match params with
 
 let rec type_attr_or_method_list classesEnv currentClassEnv l =
 
-	let type_method c s params e = 
+	let type_method c s params e static = 
 		(* Check type of the expression is the return type of the method *)
 		let nparams = type_params_list classesEnv params
 		and return_type = type_of_classname classesEnv (Located.elem_of c)
@@ -383,20 +407,26 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		in let ne = type_expr classesEnv (currentClassEnv.attributes@params_vartypes) (Located.elem_of e)
 		in
 		check_type_is return_type (type_of_expr ne) e;
-		TypedMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
+		if (static) then TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
+			else TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
+
+	and type_attr_with_value c s e static =
+		(* Don't use other attributes in the expression of an attribute *)
+		let ne = type_expr classesEnv [] (Located.elem_of e)
+		in let tne = (type_of_expr ne)
+		in 
+		check_type_is (type_of_classname classesEnv (Located.elem_of c)) tne e;
+		if (static) then TypedStaticAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne) 
+			else TypedAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne)
 
 	in let typed_attr_or_method = function
-		(* TODO change that *)
 		| Attr (c, s) -> TypedAttr(c, s, type_of_classname classesEnv (Located.elem_of c))
-		| Method (c, s, params, e) -> type_method c s params e
+		| StaticAttr (c, s) -> TypedStaticAttr(c, s, type_of_classname classesEnv (Located.elem_of c))
+		| AttrWithValue (c, s, e) -> type_attr_with_value c s e false
+		| StaticAttrWithValue (c, s, e) -> type_attr_with_value c s e true
+		| Method (c, s, params, e) -> type_method c s params e false
+		| StaticMethod (c, s, params, e) -> type_method c s params e true
 
-(*   | Attr of classname Located.t * string Located.t
-  | AttrWithValue of classname Located.t * string Located.t * expr Located.t
-  | Method of classname Located.t * string Located.t * param Located.t list * expr Located.t
-  | StaticAttr of classname Located.t * string Located.t
-  | StaticAttrWithValue of classname Located.t * string Located.t * expr Located.t
-  | StaticMethod of classname Located.t * string Located.t * param Located.t list * expr Located.t
- *)
 	in match l with
 	| [] -> []
 	| t::q -> (Located.mk_elem (typed_attr_or_method (Located.elem_of t)) (Located.loc_of t))

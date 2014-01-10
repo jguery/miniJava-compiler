@@ -53,6 +53,10 @@ let mk_method return name params =
 	mk_none (Method(mk_none (Classname (mk_none return)), 
 			mk_none name, params, mk_none (Int (mk_none 1))))
 
+let mk_smethod return name params =
+	mk_none (StaticMethod(mk_none (Classname (mk_none return)), 
+			mk_none name, params, mk_none (Int (mk_none 1))))
+
 let mk_class classname methods =
 	mk_none (Classdef(mk_none classname, methods))
 
@@ -362,6 +366,48 @@ let test_attributes _ =
 				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]]
 
+let test_static_methods _ = 
+	build_success_test
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+				name="m";
+				return=BooleanType;
+				static=true;
+				cl=CustomType "A";
+				params=[IntType]
+			};]}]
+		(* class A { static Boolean m() {...} } *)
+		[mk_class "A" [mk_smethod "Boolean" "m" [mk_param "Int"]];];
+	build_success_test
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+				name="m";
+				return=BooleanType;
+				static=true;
+				cl=CustomType "A";
+				params=[IntType]
+		 };]}; 
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
+		(* class A { static Boolean m() {...} class B extends A {} } *)
+		[mk_class "A" [mk_smethod "Boolean" "m" [mk_param "Int"]];
+		 mk_class_p "B" "A" []];
+	build_success_test
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+				name="m";
+				return=BooleanType;
+				static=true;
+				cl=CustomType "A";
+				params=[IntType]
+		 };]};
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[{
+				name="m";
+				return=BooleanType;
+				static=true;
+				cl=CustomType "B";
+				params=[IntType]
+		 };]}]
+		(* class A { static Boolean m() {..} } class B extends A { static Boolean m() {..} } *)
+		(* Not a redefinition, two methods exist: A.m and B.m *)
+		[mk_class "A" [mk_smethod "Boolean" "m" [mk_param "Int"]];
+		 mk_class_p "B" "A" [mk_smethod "Boolean" "m" [mk_param "Int"]]]
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
@@ -376,6 +422,8 @@ let suite =
 		 "methodRedefinition">:: test_method_redefinition;
 
 		 "attributes">:: test_attributes;
+
+		 "staticMethods">:: test_static_methods;
 		]
 
 let () =

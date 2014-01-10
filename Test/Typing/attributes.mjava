@@ -1,0 +1,15 @@
+class A {
+	Boolean b = true
+	Int i = 2
+	Int i2
+	static String s
+	Int m() {
+		i
+	}
+	Int m2() {
+		i2
+	}
+	static String m3() {
+		s
+	}
+}
