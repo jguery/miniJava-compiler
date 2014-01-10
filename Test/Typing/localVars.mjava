@@ -1,1 +1,2 @@
 String i = "foo" in true
+Int i = 10 in i

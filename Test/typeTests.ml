@@ -99,8 +99,8 @@ let test_conditions _ =
 let test_instance _  =
 	build_success_test
 		(Typer.CustomType("A"))
-		[{name="B"; parent=ObjectType; methods=[]};
-		 {name="A"; parent=ObjectType; methods=[]}]
+		[{name="B"; parent=ObjectType; attributes=[]; methods=[]};
+		 {name="A"; parent=ObjectType; attributes=[]; methods=[]}]
 		[]
 		(* new A *)
 		(Instance(mk_none (Classname (mk_none "A"))));
@@ -113,7 +113,7 @@ let test_instance _  =
 let test_method_call _ = 
 	build_success_test
 		(Typer.IntType)
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
 			static=false;
@@ -125,7 +125,7 @@ let test_method_call _ =
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", []));
 	build_success_test
 		(Typer.CustomType "A")
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=CustomType "A";
 			static=false;
@@ -137,7 +137,7 @@ let test_method_call _ =
 		(MethodCall(mk_none (MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [])), 
 			mk_none "m", []));
 	build_failure_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
 			static=false;
@@ -149,7 +149,7 @@ let test_method_call _ =
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m2", []))
 		(Errors.UndefinedMethod("A", "m2", []));
 	build_failure_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
 			static=false;
@@ -162,7 +162,7 @@ let test_method_call _ =
 		(Errors.UndefinedMethod("A", "m", ["Int"]));
 	build_success_test
 		(IntType)
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
 			static=false;
@@ -173,7 +173,7 @@ let test_method_call _ =
 		(* (new A).m(1) *)
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [mk_none (Int (mk_none 1))]));
 	build_failure_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
 			static=false;
@@ -202,11 +202,17 @@ let test_local_var _ =
 			mk_none (Boolean (mk_none true))));
 	build_success_test
 		(Typer.CustomType "A")
-		[{name="A"; parent=ObjectType; methods=[]}] 
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}] 
 		[]
-		(* Int i = 1 in true *)
+		(* Int i = 1 in new A *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
 			mk_none (Instance(mk_none (Classname (mk_none "A"))))));
+	build_success_test
+		Typer.IntType
+		[] []
+		(* Int i = 1 in i *)
+		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
+			mk_none (Var (mk_none "i"))));
 	build_failure_test
 		[] []
 		(* Int i = "foo" in true *)
@@ -214,6 +220,56 @@ let test_local_var _ =
 			mk_none (Boolean (mk_none true))))
 		(Errors.TypeError("Int", "String"))
 
+let test_var _ = 
+	build_success_test
+		Typer.IntType
+		[] [{t=IntType; n="i"; attr=false; static=false;}]
+		(* i *)
+		(Var(mk_none "i"));
+	build_success_test
+		Typer.IntType
+		[] 
+		[{t=StringType; n="a"; attr=false; static=false;};
+		 {t=IntType; n="i"; attr=false; static=false;}]
+		(* i *)
+		(Var(mk_none "i"));
+	build_failure_test
+		[] [{t=IntType; n="i"; attr=false; static=false;}]
+		(* a *)
+		(Var(mk_none "a"))
+		(Errors.UndefinedObject("a"));
+	build_failure_test
+		[] [{t=IntType; n="ii"; attr=false; static=false;}]
+		(* a *)
+		(Var(mk_none "i"))
+		(Errors.UndefinedObject("i"));
+	build_failure_test
+		[] [{t=IntType; n="i"; attr=false; static=false;}]
+		(* a *)
+		(Var(mk_none "ii"))
+		(Errors.UndefinedObject("ii"))
+
+let test_attr_affect _ = 
+	build_success_test
+		Typer.IntType
+		[] [{t=IntType; n="i"; attr=true; static=false}]
+		(* i = 3 *)
+		(AttrAffect(mk_none "i", mk_none (Int (mk_none 3))));
+	build_failure_test
+		[] [{t=IntType; n="i"; attr=true; static=false}]
+		(* i = "foo" *)
+		(AttrAffect(mk_none "i", mk_none (String (mk_none "foo"))))
+		(Errors.TypeError("Int", "String"));
+	build_failure_test
+		[] [{t=IntType; n="a"; attr=true; static=false}]
+		(* i = "foo" *)
+		(AttrAffect(mk_none "i", mk_none (String (mk_none "foo"))))
+		(Errors.UndefinedObject("i"));
+	build_failure_test
+		[] [{t=IntType; n="i"; attr=false; static=false}]
+		(* i = "foo" *)
+		(AttrAffect(mk_none "i", mk_none (Int (mk_none 1))))
+		(Errors.UndefinedObject("i")) (* Undefined because i is not an attribute *)
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
@@ -230,6 +286,8 @@ let suite =
 		 "instanceof">:: test_instanceof;
 
 		 "localVar">:: test_local_var;
+		 "var">:: test_var;
+		 "attrAffect">:: test_attr_affect;
 		]
 
 let () =

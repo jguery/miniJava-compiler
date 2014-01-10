@@ -15,6 +15,11 @@ let rec string_of_expr_types = function
 	| [] -> ""
 	| t::q -> (string_of_expr_type t) ^ ", " ^ (string_of_expr_types q)
 
+let rec string_of_attributes_env = function
+	| [] -> ""
+	| t::q -> "name: " ^ t.n ^ " type: " ^ (string_of_expr_type t.t) ^ "; " 
+		^ (string_of_attributes_env q)
+
 let rec string_of_methods_env = function
 	| [] -> ""
 	| t::q -> t.cl;"Name " ^ t.name ^ " class " ^ (string_of_expr_type t.cl) 
@@ -23,13 +28,26 @@ let rec string_of_methods_env = function
 let rec string_of_env = function
 	| [] -> ""
 	| t::q -> "Class " ^ t.name ^ " parent " ^ (string_of_expr_type t.parent) 
-		^ " methods : [" ^ (string_of_methods_env t.methods) ^ "]\n" ^ (string_of_env q)
+		^ " attributes : [" ^ (string_of_attributes_env t.attributes)
+		^ "] methods : [" ^ (string_of_methods_env t.methods) ^ "]\n" ^ (string_of_env q)
 
 let mk_none x = 
 	Located.mk_elem x (Location.none)
 
 let mk_param t =
 	mk_none (Param(mk_none (Classname(mk_none t)), mk_none "foo"))
+
+let mk_attr c s = 
+	mk_none (Attr(mk_none (Classname(mk_none c)), mk_none s))
+
+let mk_attr_v c s e = 
+	mk_none (AttrWithValue(mk_none (Classname(mk_none c)), mk_none s, mk_none e))
+
+let mk_sattr c s = 
+	mk_none (StaticAttr(mk_none (Classname(mk_none c)), mk_none s))
+
+let mk_sattr_v c s e = 
+	mk_none (StaticAttrWithValue(mk_none (Classname(mk_none c)), mk_none s, mk_none e))
 
 let mk_method return name params =
 	mk_none (Method(mk_none (Classname (mk_none return)), 
@@ -68,13 +86,13 @@ let build_failure_test structureTree undefinedType =
 let test_basic_class _ = 
 	(* A class with no method and no parent *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[]}]
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}]
 		 (* class A {} *)
 		[mk_class "A" []];
 
 	(* A class with no parent and one method with no param *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
 			static=false;
@@ -86,7 +104,7 @@ let test_basic_class _ =
 
 	(* A class with no parent and one method with one param *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=BooleanType;
 			static=false;
@@ -98,7 +116,7 @@ let test_basic_class _ =
 
 	(* A class with no parent and one method with two params *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=BooleanType;
 			static=false;
@@ -110,7 +128,7 @@ let test_basic_class _ =
 
 	(* A class with no parent and two methods *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=BooleanType;
 			static=false;
@@ -130,13 +148,14 @@ let test_basic_class _ =
 let test_many_classes _ =
 	(* Two classes with no method and no parent *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[]}; {name="B"; parent=ObjectType; methods=[]}]
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=ObjectType; attributes=[]; methods=[]}]
 		 (* class A {} class B {} *)
 		[mk_class "A" []; mk_class "B" []];
 
 	(* Two classes with methods *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=BooleanType;
 			static=false;
@@ -148,7 +167,7 @@ let test_many_classes _ =
 			static=false;
 			cl=CustomType "A";
 			params=[]
-		};]}; {name="B"; parent=ObjectType; methods=[{
+		};]}; {name="B"; parent=ObjectType; attributes=[]; methods=[{
 			name="m3";
 			return=CustomType "A";
 			static=false;
@@ -164,8 +183,8 @@ let test_class_with_parent _ =
 	(* Two classes with one being the parent of the other *)
 	build_success_test
 		(* class A {} class B extends A {} *)
-		[{name="A"; parent=ObjectType; methods=[]};
-		 {name="B"; parent=CustomType("A"); methods=[]}]
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]};
+		 {name="B"; parent=CustomType("A"); attributes=[]; methods=[]}]
 		[mk_class "A" []; mk_class_p "B" "A" []];
 
 	(* Class A isn't defined *)
@@ -176,14 +195,14 @@ let test_class_with_parent _ =
 	(* Two classes with one being the parent of the other and methods are involved!*)
 	build_success_test
 		(* class A { Boolean m() {..} } class B extends A { Int m2(Int i) {..} } *)
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
 				cl=CustomType "A";
 				params=[]
 			};]};
-		 {name="B"; parent=CustomType("A"); methods=[{
+		 {name="B"; parent=CustomType("A"); attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
@@ -202,14 +221,14 @@ let test_method_redefinition _ =
 	(* Redefinition of a parent method *)
 	build_success_test
 		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
 				cl=CustomType "A";
 				params=[IntType]
 			};]};
-		 {name="B"; parent=CustomType("A"); methods=[{
+		 {name="B"; parent=CustomType("A"); attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
@@ -219,23 +238,17 @@ let test_method_redefinition _ =
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
 		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"]]];
 
-	(* Not a redefinition: return type is different *)
+	(* Signatures of methods doesn't take return type into account for redefinition *)
 	build_success_test
 		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
 				cl=CustomType "A";
 				params=[]
 			};]};
-		 {name="B"; parent=CustomType("A"); methods=[{
-				name="m";
-				return=BooleanType;
-				static=false;
-				cl=CustomType "A";
-				params=[]
-			};{
+		 {name="B"; parent=CustomType("A"); attributes=[]; methods=[{
 				name="m";
 				return=IntType;
 				static=false;
@@ -247,14 +260,14 @@ let test_method_redefinition _ =
 	(* Not a redefinition: params are different *)
 	build_success_test
 		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
 				cl=CustomType "A";
 				params=[IntType]
 			};]};
-		 {name="B"; parent=CustomType("A"); methods=[{
+		 {name="B"; parent=CustomType("A"); attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
@@ -272,14 +285,14 @@ let test_method_redefinition _ =
 
 	(* Not a redefinition: params are different *)
 	build_success_test
-		[{name="A"; parent=ObjectType; methods=[{
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
 				cl=CustomType "A";
 				params=[IntType]
 			};]};
-		 {name="B"; parent=CustomType("A"); methods=[{
+		 {name="B"; parent=CustomType("A"); attributes=[]; methods=[{
 				name="m";
 				return=BooleanType;
 				static=false;
@@ -295,6 +308,61 @@ let test_method_redefinition _ =
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
 		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"; mk_param "Boolean"]]]
 
+let test_attributes _ = 
+	build_success_test
+		(* class A {Int i} *)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_attr "Int" "i"]];
+	build_success_test
+		(* class A {Int i} *)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=true;};]; methods=[];}]
+		[mk_class "A" [mk_sattr "Int" "i"]];
+	build_success_test
+		(* class A {Int i=1} *)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_attr_v "Int" "i" (Int (mk_none 1))]];
+	build_success_test
+		(* class A {static Int i=1} *)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=true;};]; methods=[];}]
+		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]];
+	build_success_test
+		(* class A {Int i} class B extends A {Boolean b}*)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=false;};]; methods=[];};
+		 {name="B"; parent=CustomType "A"; attributes=[
+		 		{n="i"; t=IntType; attr=true; static=false;};
+				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_attr "Int" "i"]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
+	build_success_test
+		(* class A {Int i=1} class B extends A {Boolean b}*)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=false;};]; methods=[];};
+		 {name="B"; parent=CustomType "A"; attributes=[
+		 		{n="i"; t=IntType; attr=true; static=false;};
+				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_attr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
+	build_success_test
+		(* class A {Int i} class B extends A {Boolean b}*)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=true;};]; methods=[];};
+		 {name="B"; parent=CustomType "A"; attributes=[
+		 		{n="i"; t=IntType; attr=true; static=true;};
+				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_sattr "Int" "i"]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
+	build_success_test
+		(* class A {Int i} class B extends A {Boolean b}*)
+		[{name="A"; parent=ObjectType; 
+			attributes=[{n="i"; t=IntType; attr=true; static=true;};]; methods=[];};
+		 {name="B"; parent=CustomType "A"; attributes=[
+		 		{n="i"; t=IntType; attr=true; static=true;};
+				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]]
+
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -306,6 +374,8 @@ let suite =
 		 "classWithParent">:: test_class_with_parent;
 
 		 "methodRedefinition">:: test_method_redefinition;
+
+		 "attributes">:: test_attributes;
 		]
 
 let () =

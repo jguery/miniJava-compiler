@@ -13,6 +13,8 @@ type exprType =
 type varType = {
 	n : string;
 	t : exprType;
+	attr : bool;
+	static : bool;
 }
 
 (* Do we need location info ? Don't add it for now *)
@@ -28,6 +30,7 @@ type classTypeEnv = {
 	name : string;
 	parent: exprType;
 	methods : methodType list;
+	attributes : varType list;
 }
 
 (* Copy a list of methodType structures *)
@@ -118,12 +121,12 @@ let rec type_of_expr = function
 	| TypedCast(_, _, t) -> t 
 	| TypedInstanceof(_, _, t) -> t 
 
-let rec type_of_structure_tree tree = 
-	let rec type_of_structure = function
-		| TypedExpr e -> type_of_expr (Located.elem_of e)
-	in match tree with 
+let rec type_of_structure_tree tree = match tree with 
 	| [] -> []
-	| t::q -> (type_of_structure (Located.elem_of t))::(type_of_structure_tree q)
+	| t::q -> (match (Located.elem_of t) with
+			| TypedExpr e -> (type_of_expr (Located.elem_of e))::(type_of_structure_tree q)
+			| _ -> type_of_structure_tree q
+		)
 
 
 (**************************************************************************************************)
@@ -146,6 +149,15 @@ let rec methods_of_type currentClassEnv locCn = match currentClassEnv with
 	| t::q -> (match (Located.elem_of locCn) with
 			| Classname s when (Located.elem_of s) = t.name -> t.methods
 			| _ -> methods_of_type q locCn
+		)
+
+(* This function takes a class environment and a located classname and
+returns the attributes associated to the classname in the env *)
+let rec attributes_of_type currentClassEnv locCn = match currentClassEnv with 
+	| [] -> raise (PError(UndefinedType(string_of_classname (Located.elem_of locCn)), Located.loc_of locCn))
+	| t::q -> (match (Located.elem_of locCn) with
+			| Classname s when (Located.elem_of s) = t.name -> t.attributes
+			| _ -> attributes_of_type q locCn
 		)
 
 (* This function builds a list of exprType, based on a list of params *)
@@ -186,22 +198,32 @@ let add_method_to_env currentClassEnv methodsEnv classname m =
 (* This function builds the methods definition environment of a class. 
 The param is a located list of attr_or_methods *)
 (* It returns a list of methodType *)
-let rec build_methods_env currentClassEnv methodsEnv classname elems = match elems with 
-	| [] -> List.rev methodsEnv (* Reverse to retrieve the order of definition *)
+let rec build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classname elems = match elems with 
+	| [] -> List.rev methodsEnv, List.rev attrsEnv (* Reverse to retrieve the order of definition *)
 	| t::q -> (match (Located.elem_of t) with 
 				(* The item is a method, we check its environment *)
 			| Method(_, _, _, _) -> 
-				build_methods_env currentClassEnv 
+				build_methods_and_attrs_env currentClassEnv 
 					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
-					classname 
-					q
+					attrsEnv classname q
 			| StaticMethod(_, _, _, _) -> 
-				build_methods_env currentClassEnv 
+				build_methods_and_attrs_env currentClassEnv 
 					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
-					classname 
-					q
+					attrsEnv classname q
+			| Attr(c, n) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
+								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
+									attr=true; static=false;}::attrsEnv) classname q
+			| AttrWithValue(c, n, _) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
+								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
+									attr=true; static=false;}::attrsEnv) classname q
+			| StaticAttr(c, n) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
+								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
+									attr=true; static=true;}::attrsEnv) classname q
+			| StaticAttrWithValue(c, n, _) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
+								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
+									attr=true; static=true;}::attrsEnv) classname q
 				(* The item is not a method, don't add it to the methods environment *)
-			| _ -> build_methods_env currentClassEnv methodsEnv classname q
+			(* | _ -> build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classname q *)
 		)	 
 
 (* This function builds the classes definition environment of the located structured tree in param *)
@@ -210,15 +232,22 @@ let build_classes_env tree =
 	(* This inner function receives a non-located structure, 
 	which is either a Classdef or a ClassdefWithParent. It returns a classTypeEnv *)
 	let rec build_class_env currentClassEnv c = match c with 
-		| Classdef(n, l) -> {name = Located.elem_of n ; parent = ObjectType ; 
-			methods = (build_methods_env currentClassEnv [] (Located.elem_of n) l)}
-		| ClassdefWithParent(n, p, l) -> {name = Located.elem_of n ; 
-			parent = type_of_classname currentClassEnv (Located.elem_of p) ;
-			methods = 
-				(* Use copy_methods_types_list to get an independent copy of the parent methods *)
-				build_methods_env currentClassEnv 
+		| Classdef(n, l) -> let (methods, attrs) = 
+			build_methods_and_attrs_env currentClassEnv [] [] (Located.elem_of n) l
+			in 
+			{name = Located.elem_of n; parent = ObjectType; methods = methods; attributes = attrs}
+		| ClassdefWithParent(n, p, l) -> let (methods, attrs) =
+			(* Use copy_methods_types_list to get an independent copy of the parent methods *)
+			(* Yet, no need to copy the attributes list since we never change them in a son class *)
+			build_methods_and_attrs_env currentClassEnv 
 					(copy_methods_types_list (methods_of_type currentClassEnv p)) 
+					(attributes_of_type currentClassEnv p) 
 					(Located.elem_of n) l 
+			in 
+			{name = Located.elem_of n ; 
+			parent = type_of_classname currentClassEnv (Located.elem_of p) ;
+			methods = methods;
+			attributes = attrs;
 			}
 	in let rec build_rec_classes_env env tr = match tr with 
 		| [] -> env
@@ -238,10 +267,16 @@ let build_classes_env tree =
 let check_type_is exp real e = 
 	if (exp = real) then real else (make_error e exp real)
 
-let rec get_classdef classEnv classname_string loc = 
+let rec get_var_type varEnv var_string loc checkAttr = match varEnv with 
+	(* varEnv is a list of varType, and checkAttr is a boolean to make sure var is an attribute *)
+	| [] -> raise (PError(UndefinedObject(var_string), loc))
+	| t::q -> if (t.n = var_string && (checkAttr = false || (checkAttr && t.attr))) 
+		then t.t else (get_var_type q var_string loc checkAttr)
+
+let rec get_classdef classesEnv classname_string loc = 
 	let s c = 
 		if (c.name = classname_string) then true else false
-	in match classEnv with
+	in match classesEnv with
 	| [] -> raise (PError(UndefinedType(classname_string), loc))
 	| t::q -> if (s t) then t else get_classdef q classname_string loc
 
@@ -259,20 +294,26 @@ let rec get_methoddef classdef method_string args_types loc =
 	in 
 	do_l classdef.methods
 
+let rec params_to_vartype classesEnv nparams = match nparams with 
+	| [] -> []
+	| t::q -> (match Located.elem_of t with 
+			| TypedParam(_, s, t) -> {t=t; n=Located.elem_of s; attr=false; static=false;}
+				::(params_to_vartype classesEnv q)
+		)
 
 (* This function receives a non-located expr and returns a non-located typed_expr *)
-let rec type_expr classEnv varEnv expr = 
+let rec type_expr classesEnv varEnv expr = 
 	let type_unop u e = 
-		let ne = type_expr classEnv varEnv (Located.elem_of e) in 
+		let ne = type_expr classesEnv varEnv (Located.elem_of e) in 
 		let bufType = match (Located.elem_of u) with
 				| Udiff -> check_type_is BooleanType (type_of_expr ne) e
 				| Uminus -> check_type_is IntType (type_of_expr ne) e
 		in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 
 	and type_condition i t e = 
-		let ni = type_expr classEnv varEnv (Located.elem_of i) and
-		nt = type_expr classEnv varEnv (Located.elem_of t) and
-		ne = type_expr classEnv varEnv (Located.elem_of e) in
+		let ni = type_expr classesEnv varEnv (Located.elem_of i) and
+		nt = type_expr classesEnv varEnv (Located.elem_of t) and
+		ne = type_expr classesEnv varEnv (Located.elem_of e) in
 		check_type_is BooleanType (type_of_expr ni) i;
 		TypedCondition(Located.mk_elem ni (Located.loc_of i),
 			Located.mk_elem nt (Located.loc_of t),
@@ -282,23 +323,31 @@ let rec type_expr classEnv varEnv expr =
 	and type_method_call e m args = 
 		let rec do_l = function 
 			| [] -> []
-			| t::q -> (Located.mk_elem (type_expr classEnv varEnv (Located.elem_of t)) (Located.loc_of t))::(do_l q)
+			| t::q -> (Located.mk_elem (type_expr classesEnv varEnv (Located.elem_of t)) (Located.loc_of t))::(do_l q)
 		and type_args = function
 			| [] -> []
 			| t::q -> (type_of_expr (Located.elem_of t))::(type_args q)
-		and ne = type_expr classEnv varEnv (Located.elem_of e)
-		in let classdef = get_classdef classEnv (string_of_expr_type (type_of_expr ne)) (Located.loc_of e)
+		and ne = type_expr classesEnv varEnv (Located.elem_of e)
+		in let classdef = get_classdef classesEnv (string_of_expr_type (type_of_expr ne)) (Located.loc_of e)
 		in let nargs = do_l args
 		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) (Located.loc_of m) 
 		in TypedMethodCall(Located.mk_elem ne (Located.loc_of e), m, nargs, methoddef.return)
 
 	and type_local_variable c v ve e =
-		let nve = type_expr classEnv varEnv (Located.elem_of ve)
-		and classname_type = type_of_classname classEnv (Located.elem_of c)
-		in let ne = type_expr classEnv ({t=check_type_is classname_type (type_of_expr nve) ve; 
-			n=(Located.elem_of v)}::varEnv) (Located.elem_of e)
+		let nve = type_expr classesEnv varEnv (Located.elem_of ve)
+		and classname_type = type_of_classname classesEnv (Located.elem_of c)
+		in let ne = type_expr classesEnv ({t=check_type_is classname_type (type_of_expr nve) ve; 
+			n=(Located.elem_of v); attr=false; static=false}::varEnv) (Located.elem_of e)
 		in TypedLocal (c, v, Located.mk_elem nve (Located.loc_of ve), 
 			Located.mk_elem ne (Located.loc_of e), type_of_expr ne)
+
+	and type_attr_affect s e =
+		(* TODO check var is an attribute, and not a local var *)
+		let ne = type_expr classesEnv varEnv (Located.elem_of e)
+		in let tne = type_of_expr ne
+		in 
+		check_type_is (get_var_type varEnv (Located.elem_of s) (Located.loc_of s) true) tne e;
+		TypedAttrAffect(s, Located.mk_elem ne (Located.loc_of e), tne)
 
 	in match expr with
   	| Null -> TypedNull
@@ -308,28 +357,66 @@ let rec type_expr classEnv varEnv expr =
 	| String s -> TypedString (s, StringType)
 	| Unop (u, e) -> type_unop u e
 	| Condition (i, t, e) -> type_condition i t e
-	| Instance cn -> TypedInstance(cn, CustomType ((get_classdef classEnv 
+	| Instance cn -> TypedInstance(cn, CustomType ((get_classdef classesEnv 
 		(string_of_classname (Located.elem_of cn)) (Located.loc_of cn)).name))
 	| MethodCall (e, m, args) -> type_method_call e m args
-	| Instanceof (e, c) -> TypedInstanceof(Located.mk_elem (type_expr classEnv varEnv (Located.elem_of e)) 
+	| Instanceof (e, c) -> TypedInstanceof(Located.mk_elem (type_expr classesEnv varEnv (Located.elem_of e)) 
 								(Located.loc_of e), c, BooleanType)
 	| Local (c, v, ve, e) -> type_local_variable c v ve e
+	| Var s -> TypedVar(s, get_var_type varEnv (Located.elem_of s) (Located.loc_of s) false)
+	| AttrAffect (s, e) -> type_attr_affect s e
 
+let rec type_params_list classesEnv params = match params with
+	| [] -> []
+	| t::q -> (match (Located.elem_of t) with 
+			| Param(c, s) -> Located.mk_elem (TypedParam(c, s, type_of_classname classesEnv (Located.elem_of c))) 
+					(Located.loc_of t)::(type_params_list classesEnv q)
+		)
+
+let rec type_attr_or_method_list classesEnv currentClassEnv l =
+
+	let type_method c s params e = 
+		(* Check type of the expression is the return type of the method *)
+		let nparams = type_params_list classesEnv params
+		and return_type = type_of_classname classesEnv (Located.elem_of c)
+		in let params_vartypes = params_to_vartype classesEnv nparams
+		in let ne = type_expr classesEnv (currentClassEnv.attributes@params_vartypes) (Located.elem_of e)
+		in
+		check_type_is return_type (type_of_expr ne) e;
+		TypedMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
+
+	in let typed_attr_or_method = function
+		(* TODO change that *)
+		| Attr (c, s) -> TypedAttr(c, s, type_of_classname classesEnv (Located.elem_of c))
+		| Method (c, s, params, e) -> type_method c s params e
+
+(*   | Attr of classname Located.t * string Located.t
+  | AttrWithValue of classname Located.t * string Located.t * expr Located.t
+  | Method of classname Located.t * string Located.t * param Located.t list * expr Located.t
+  | StaticAttr of classname Located.t * string Located.t
+  | StaticAttrWithValue of classname Located.t * string Located.t * expr Located.t
+  | StaticMethod of classname Located.t * string Located.t * param Located.t list * expr Located.t
+ *)
+	in match l with
+	| [] -> []
+	| t::q -> (Located.mk_elem (typed_attr_or_method (Located.elem_of t)) (Located.loc_of t))
+				::(type_attr_or_method_list classesEnv currentClassEnv q)
 
 (* This function receives a located list of class_or_expr, 
 and returns a located list of typed_class_or_expr *)
 let type_structure_tree tree = 
-	let classEnv = build_classes_env tree 
+	let classesEnv = build_classes_env tree 
 	in let rec type_rec_structure_tree sub_tree =
 		(* This inner function receives a non-located class_or_expr *)
 		let type_structure = function
-			| Expr e -> TypedExpr (Located.mk_elem (type_expr classEnv [] (Located.elem_of e)) (Located.loc_of e))
+			| Expr e -> TypedExpr (Located.mk_elem (type_expr classesEnv [] (Located.elem_of e)) (Located.loc_of e))
+			| Classdef (s, l) -> TypedClassdef(s, type_attr_or_method_list classesEnv 
+				(get_classdef classesEnv (Located.elem_of s) (Located.loc_of s)) l)
+			| ClassdefWithParent (s, p, l) -> TypedClassdefWithParent(s, p, type_attr_or_method_list classesEnv 
+				(get_classdef classesEnv (Located.elem_of s) (Located.loc_of s)) l)
 		in match sub_tree with
 		| [] -> []
-		| t::q -> (match (Located.elem_of t) with 
-				| Expr e -> (Located.mk_elem (type_structure (Located.elem_of t)) (Located.loc_of t))
+		| t::q -> (Located.mk_elem (type_structure (Located.elem_of t)) (Located.loc_of t))
 								::(type_rec_structure_tree q)
-				| _ -> type_rec_structure_tree q
-			)
 	in 
 	type_rec_structure_tree tree 

@@ -5,6 +5,7 @@ type error =
 	| TypeError of string * string
 	| UndefinedType of string
 	| UndefinedMethod of string * string * string list
+	| UndefinedObject of string
 
 exception PError of error * Location.t
 
@@ -20,3 +21,4 @@ let string_of_error e =
 	| UndefinedType t -> "Definition error: type " ^ t ^ " is undefined"
 	| UndefinedMethod (t, m, args) -> "Definition error: method " ^ m ^ "(" 
 		^ (string_of_args args) ^ ") of type " ^ t ^ " is undefined"
+	| UndefinedObject s -> "Definition error: object " ^ s ^ " is undefined"
