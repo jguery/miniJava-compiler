@@ -184,7 +184,20 @@ let test_method_call _ =
 		(* (new A).m(1, true) *)
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", 
 			[mk_none (Int (mk_none 1)); mk_none (Boolean (mk_none true))]))
-		(Errors.UndefinedMethod("A", "m", ["Int"; "Boolean"]))
+		(Errors.UndefinedMethod("A", "m", ["Int"; "Boolean"]));
+	build_failure_test
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+			name="m";
+			return=IntType;
+			static=true;
+			cl=CustomType "A";
+			params=[]
+		};]}]
+		[]
+		(* (new A).m() *)
+		(* Method calls CANNOT be done on static methods *)
+		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", []))
+		(Errors.UndefinedMethod("A", "m", []))
 
 let test_instanceof _ = 
 	build_success_test
