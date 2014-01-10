@@ -373,6 +373,19 @@ let rec type_expr classesEnv varEnv expr =
 		check_type_is (get_var_type varEnv (Located.elem_of s) (Located.loc_of s) true) tne e;
 		TypedAttrAffect(s, Located.mk_elem ne (Located.loc_of e), tne)
 
+	and type_static_method_call c m args =
+		let rec do_l = function 
+			| [] -> []
+			| t::q -> (Located.mk_elem (type_expr classesEnv varEnv (Located.elem_of t)) 
+				(Located.loc_of t))::(do_l q)
+		and type_args = function
+			| [] -> []
+			| t::q -> (type_of_expr (Located.elem_of t))::(type_args q)
+		in let classdef = get_classdef classesEnv (string_of_classname (Located.elem_of c)) (Located.loc_of c)
+		in let nargs = do_l args
+		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) true (Located.loc_of m) 
+		in TypedStaticMethodCall(c, m, nargs, methoddef.return)
+
 	in match expr with
   	| Null -> TypedNull
   	| This -> TypedThis
@@ -389,6 +402,8 @@ let rec type_expr classesEnv varEnv expr =
 	| Local (c, v, ve, e) -> type_local_variable c v ve e
 	| Var s -> TypedVar(s, get_var_type varEnv (Located.elem_of s) (Located.loc_of s) false)
 	| AttrAffect (s, e) -> type_attr_affect s e
+	| StaticMethodCall (c, m, args) -> type_static_method_call c m args
+
 
 let rec type_params_list classesEnv params = match params with
 	| [] -> []

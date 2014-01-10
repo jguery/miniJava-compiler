@@ -284,6 +284,54 @@ let test_attr_affect _ =
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 1))))
 		(Errors.UndefinedObject("i")) (* Undefined because i is not an attribute *)
 
+let test_static_method_call _ =
+	build_success_test
+		Typer.IntType
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+			name="m";
+			return=IntType;
+			static=true;
+			cl=CustomType "A";
+			params=[]
+		};]}] []
+		(* A.m() *)
+		(StaticMethodCall(mk_none (Classname (mk_none "A")), mk_none "m", []));
+	build_success_test
+		Typer.IntType
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+			name="m";
+			return=IntType;
+			static=true;
+			cl=CustomType "A";
+			params=[]
+		};]}; {name="B"; parent=CustomType "A"; attributes=[]; methods=[{
+			name="m";
+			return=StringType;
+			static=true;
+			cl=CustomType "B";
+			params=[]
+		};]};] 
+		[]
+		(StaticMethodCall(mk_none (Classname (mk_none "A")), mk_none "m", []));
+	build_success_test
+		Typer.StringType
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+			name="m";
+			return=IntType;
+			static=true;
+			cl=CustomType "A";
+			params=[]
+		};]}; {name="B"; parent=CustomType "A"; attributes=[]; methods=[{
+			name="m";
+			return=StringType;
+			static=true;
+			cl=CustomType "B";
+			params=[]
+		};]};] 
+		[]
+		(StaticMethodCall(mk_none (Classname (mk_none "B")), mk_none "m", []))
+
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -301,6 +349,8 @@ let suite =
 		 "localVar">:: test_local_var;
 		 "var">:: test_var;
 		 "attrAffect">:: test_attr_affect;
+
+		 "staticMethodCall">:: test_static_method_call;
 		]
 
 let () =
