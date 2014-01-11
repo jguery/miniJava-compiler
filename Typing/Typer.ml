@@ -333,6 +333,23 @@ let rec type_expr classesEnv varEnv expr =
 				| Uminus -> check_type_is IntType (type_of_expr ne) e
 		in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 
+	and type_binop b e1 e2 =
+		let ne1 = type_expr classesEnv varEnv (Located.elem_of e1) 
+		and ne2 = type_expr classesEnv varEnv (Located.elem_of e2) 
+		in let bufType = match (Located.elem_of b) with
+				| Bsemicol -> type_of_expr ne2
+				| Binf | Binfeq | Bsup | Bsupeq | Badd | Bsub | Bmul | Bdiv | Bmod -> 
+					check_type_is IntType (type_of_expr ne1) e1;
+					check_type_is IntType (type_of_expr ne2) e2
+				| Bdiff | Beq -> 
+					check_type_is (type_of_expr ne1) (type_of_expr ne2) e2; 
+					BooleanType
+				| Band | Bor -> 
+					check_type_is BooleanType (type_of_expr ne1) e1;
+					check_type_is BooleanType (type_of_expr ne2) e2
+		in TypedBinop(b, Located.mk_elem ne1 (Located.loc_of e1), 
+			Located.mk_elem ne2 (Located.loc_of e2), bufType)
+
 	and type_condition i t e = 
 		let ni = type_expr classesEnv varEnv (Located.elem_of i) and
 		nt = type_expr classesEnv varEnv (Located.elem_of t) and
@@ -403,6 +420,7 @@ let rec type_expr classesEnv varEnv expr =
 	| Var s -> TypedVar(s, get_var_type varEnv (Located.elem_of s) (Located.loc_of s) false)
 	| AttrAffect (s, e) -> type_attr_affect s e
 	| StaticMethodCall (c, m, args) -> type_static_method_call c m args
+	| Binop (b, e1, e2) -> type_binop b e1 e2
 
 
 let rec type_params_list classesEnv params = match params with
