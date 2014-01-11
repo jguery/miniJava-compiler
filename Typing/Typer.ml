@@ -1,7 +1,9 @@
 (* A word about static methods: they are NOT put in the methods environment 
 	of a daughter class, because there is no such thing as a redefinition of 
 	a static method. Static methods MUST only be called with : A.m(). a.m(), 
-	with a being an instance of A and m a static method, will be rejected. *)
+	with a being an instance of A and m a static method, will be rejected. 
+	In the same way, only the static attributes can be seen in a static method.
+	Yet, a normal method can see static attributes.*)
 
 open Located
 open Location
@@ -221,15 +223,12 @@ let add_method_to_env currentClassEnv methodsEnv classname m =
 (* This function builds the methods definition environment of a class. 
 The param is a located list of attr_or_methods *)
 (* It returns a list of methodType *)
-let rec build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classname elems = match elems with 
+let rec build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classname elems = 
+	match elems with 
 	| [] -> List.rev methodsEnv, List.rev attrsEnv (* Reverse to retrieve the order of definition *)
 	| t::q -> (match (Located.elem_of t) with 
 				(* The item is a method, we check its environment *)
-			| Method(_, _, _, _) -> 
-				build_methods_and_attrs_env currentClassEnv 
-					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
-					attrsEnv classname q
-			| StaticMethod(_, _, _, _) -> 
+			| Method _ | StaticMethod _ -> 
 				build_methods_and_attrs_env currentClassEnv 
 					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
 					attrsEnv classname q
@@ -245,8 +244,6 @@ let rec build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classnam
 			| StaticAttrWithValue(c, n, _) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
 								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
 									attr=true; static=true;}::attrsEnv) classname q
-				(* The item is not a method, don't add it to the methods environment *)
-			(* | _ -> build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classname q *)
 		)	 
 
 (* This function builds the classes definition environment of the located structured tree in param *)
@@ -338,9 +335,13 @@ let rec type_expr classesEnv varEnv expr =
 		and ne2 = type_expr classesEnv varEnv (Located.elem_of e2) 
 		in let bufType = match (Located.elem_of b) with
 				| Bsemicol -> type_of_expr ne2
-				| Binf | Binfeq | Bsup | Bsupeq | Badd | Bsub | Bmul | Bdiv | Bmod -> 
+				| Badd | Bsub | Bmul | Bdiv | Bmod -> 
 					check_type_is IntType (type_of_expr ne1) e1;
 					check_type_is IntType (type_of_expr ne2) e2
+				| Binf | Binfeq | Bsup | Bsupeq ->
+					check_type_is IntType (type_of_expr ne1) e1;
+					check_type_is IntType (type_of_expr ne2) e2;
+					BooleanType
 				| Bdiff | Beq -> 
 					check_type_is (type_of_expr ne1) (type_of_expr ne2) e2; 
 					BooleanType
@@ -433,11 +434,18 @@ let rec type_params_list classesEnv params = match params with
 let rec type_attr_or_method_list classesEnv currentClassEnv l =
 
 	let type_method c s params e static = 
-		(* Check type of the expression is the return type of the method *)
-		let nparams = type_params_list classesEnv params
+		(* parse_attributes is made for static methods to receive 
+			only the static attributes in its variables env *)
+		let rec parse_attributes attrs = if (static = false) then attrs else 
+			begin match attrs with
+				| [] -> []
+				| t::q -> t.t; if (t.static) then t::(parse_attributes q) else parse_attributes q
+			end
+		in let nparams = type_params_list classesEnv params
 		and return_type = type_of_classname classesEnv (Located.elem_of c)
 		in let params_vartypes = params_to_vartype classesEnv nparams
-		in let ne = type_expr classesEnv (currentClassEnv.attributes@params_vartypes) (Located.elem_of e)
+		in let ne = type_expr classesEnv ((parse_attributes currentClassEnv.attributes)@params_vartypes) 
+			(Located.elem_of e)
 		in
 		check_type_is return_type (type_of_expr ne) e;
 		if (static) then TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)

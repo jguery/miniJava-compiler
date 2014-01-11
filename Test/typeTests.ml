@@ -331,6 +331,102 @@ let test_static_method_call _ =
 		[]
 		(StaticMethodCall(mk_none (Classname (mk_none "B")), mk_none "m", []))
 
+let test_binop _ =
+	build_success_test
+		Typer.IntType [] []
+		(Binop(mk_none Bsemicol, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.IntType [] []
+		(Binop(mk_none Badd, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.IntType [] []
+		(Binop(mk_none Bsub, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.IntType [] []
+		(Binop(mk_none Bmul, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.IntType [] []
+		(Binop(mk_none Bdiv, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.IntType [] []
+		(Binop(mk_none Bmod, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Bsup, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Bsupeq, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Binf, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Binfeq, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Band, mk_none (Boolean (mk_none true)), mk_none (Boolean (mk_none true))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Bor, mk_none (Boolean (mk_none true)), mk_none (Boolean (mk_none true))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Bdiff, mk_none (String (mk_none "foo")), mk_none (String (mk_none "bar"))));
+	build_success_test
+		Typer.BooleanType [] []
+		(Binop(mk_none Beq, mk_none (String (mk_none "foo")), mk_none (String (mk_none "bar"))));
+
+	build_failure_test
+		[] []
+		(Binop(mk_none Badd, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bsub, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bmul, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bdiv, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bmod, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bsup, mk_none (Int (mk_none 1)), mk_none (String (mk_none "foo"))))
+		(Errors.TypeError("Int", "String"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bsupeq, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Int", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Binf, mk_none (Int (mk_none 1)), mk_none (String (mk_none "foo"))))
+		(Errors.TypeError("Int", "String"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Binfeq, mk_none (Int (mk_none 1)), mk_none (String (mk_none "foo"))))
+		(Errors.TypeError("Int", "String"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Band, mk_none (Int (mk_none 1)), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Boolean", "Int"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bor, mk_none (String (mk_none "foo")), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("Boolean", "String"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Bdiff, mk_none (String (mk_none "foo")), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("String", "Boolean"));
+	build_failure_test
+		[] []
+		(Binop(mk_none Beq, mk_none (String (mk_none "foo")), mk_none (Boolean (mk_none true))))
+		(Errors.TypeError("String", "Boolean"))
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
@@ -351,6 +447,8 @@ let suite =
 		 "attrAffect">:: test_attr_affect;
 
 		 "staticMethodCall">:: test_static_method_call;
+
+		 "binop">:: test_binop;
 		]
 
 let () =

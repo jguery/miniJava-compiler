@@ -10,6 +10,6 @@ class A {
 		i2
 	}
 	static String m3() {
-		s
+		i2; s // Should raise an error, since i2 is a non static attribute
 	}
 }
