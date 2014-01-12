@@ -544,7 +544,61 @@ let test_method_expr _ =
 			[mk_class "A" [mk_attr "Int" "i"; mk_method_e "Int" "testM" [mk_param_n "Boolean" "a"] 
 				(Binop(mk_none Badd, mk_none (Var(mk_none "i")), mk_none (Var(mk_none "a"))))]]
 			(Errors.TypeError("Int", "Boolean"))
- 
+
+let test_cast _ = 
+	build_success_test
+		(CustomType "A")
+		(* class A {} class B extends A {} *)
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
+		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
+		(* (A)b *)
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))));
+	build_success_test
+		(CustomType "B")
+		(* class A {} class B extends A {} *)
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
+		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
+		(* (B)a *)
+		(Cast(mk_none (Classname (mk_none "B")), mk_none (Var (mk_none "a"))));
+	build_failure_test
+		(* class A {} class B {} *)
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=ObjectType; attributes=[]; methods=[]}]
+		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
+		(* (A)b *)
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))
+		(Errors.IllegalCast("B", "A"));
+	build_success_test
+		(CustomType "A")
+		(* class A {} class B extends A {} class C extends B *)
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
+		 {name="C"; parent=CustomType "B"; attributes=[]; methods=[]}]
+		[{n="c"; t=CustomType "C"; attr=false; static=false;}]
+		(* (A)c <= up casting, always legal *)
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "c"))));
+	build_success_test
+		(CustomType "C")
+		(* class A {} class B extends A {} class C extends B *)
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
+		 {name="C"; parent=CustomType "B"; attributes=[]; methods=[]}]
+		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
+		(* (C)a <= down casting, not always legal *)
+		(Cast(mk_none (Classname (mk_none "C")), mk_none (Var (mk_none "a"))));
+	build_success_test
+		(CustomType "C")
+		(* class A {} class B extends A {} class C extends A *)
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
+		 {name="C"; parent=CustomType "A"; attributes=[]; methods=[]}]
+		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
+		(* (C)((A)b) <= down casting, not legal but not detectable at this point *)
+		(Cast(mk_none (Classname (mk_none "C")), mk_none (
+			Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))))
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -566,6 +620,7 @@ let suite =
 		 "staticMethodCall">:: test_static_method_call;
 
 		 "binop">:: test_binop;
+		 "cast">:: test_cast;
 
 		 "methodExpr">::test_method_expr;
 		]

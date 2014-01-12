@@ -291,6 +291,8 @@ let build_classes_env tree =
 (**************************************************************************************************)
 (******************* These functions translate a structure into a typed structure *****************)
 
+(* TODO This method should make sure real is not a child of exp, for exemple...
+Hence it should be renamed check_type_is_legal or sth like this *)
 let check_type_is exp real e = 
 	if (exp = real) then real else (make_error e exp real)
 
@@ -411,6 +413,28 @@ let rec type_expr classesEnv varEnv expr =
 		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) true (Located.loc_of m) 
 		in TypedStaticMethodCall(c, m, nargs, methoddef.return)
 
+	and type_cast c e =
+		let classdef_to = get_classdef classesEnv (string_of_classname (Located.elem_of c)) (Located.loc_of c)
+		and ne = type_expr classesEnv varEnv (Located.elem_of e)
+		in let tne = type_of_expr ne
+		in let classdef_from = get_classdef classesEnv (string_of_expr_type tne) (Located.loc_of e)
+		in let rec is_parent parent daughter = 
+			if (daughter.parent = ObjectType) then false else begin
+				if (daughter.parent = CustomType (parent.name)) then true else begin
+					(* We don't care about the location here, since it is not possible that get_classdef 
+					raises an error. The error would have been signaled when building the classes environment *)
+					is_parent parent (get_classdef classesEnv (string_of_expr_type daughter.parent) 
+						(Located.loc_of e))
+				end
+			end
+		in 
+		if (is_parent classdef_to classdef_from 
+			(* Down-casting isn't always legal, must check that later in the compiler *)
+			|| is_parent classdef_from classdef_to) then 
+			TypedCast(c, Located.mk_elem ne (Located.loc_of e), CustomType classdef_to.name)
+		else raise (Errors.PError(IllegalCast(string_of_expr_type tne, string_of_classname (Located.elem_of c)),
+				Located.loc_of e))
+
 	in match expr with
   	| Null -> TypedNull
   	| This -> TypedThis
@@ -429,6 +453,7 @@ let rec type_expr classesEnv varEnv expr =
 	| AttrAffect (s, e) -> type_attr_affect s e
 	| StaticMethodCall (c, m, args) -> type_static_method_call c m args
 	| Binop (b, e1, e2) -> type_binop b e1 e2
+	| Cast (c, e) -> type_cast c e
 
 
 let rec type_params_list classesEnv params = match params with
