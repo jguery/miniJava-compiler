@@ -1,5 +1,6 @@
 open OUnit2
 
+open TestUtils
 open Located
 open Location
 open Structure
@@ -10,8 +11,6 @@ exception TestError of Errors.error
 
 (*************************************************************************************)
 (***************************** Utils for building tests ******************************)
-let mk_none x = 
-	Located.mk_elem x (Location.none)
 
 let build_success_test expType classEnv varEnv expr =
 	print_endline ((Structure.string_of_expr expr) ^ " => " ^ (Typer.string_of_expr_type expType));
@@ -25,6 +24,41 @@ let build_failure_test classEnv varEnv expr err =
 				^ (Errors.string_of_error err));
 			print_endline "========================================";
 			Typer.type_expr classEnv varEnv expr
+		with Errors.PError (e, l) ->
+			(* Strip the location information *)
+			raise (TestError e)
+	in
+	assert_raises (TestError err) test
+
+(* This test-builder evaluates the expression of the method called testM 
+in the last class of the structure tree *)
+let build_method_expr_success_test expType tree =
+	print_endline ((Structure.string_of_structure_tree tree) ^ " => " ^ (Typer.string_of_expr_type expType));
+	print_endline "========================================";
+	let rec find_m l = match l with 
+		| [] -> raise (TestError (UndefinedMethod("TestType", "testM", [])))
+		| t::q -> (match Located.elem_of t with 
+				| TypedMethod (_, m, _, e, _) when (Located.elem_of m) = "testM" -> 
+					type_of_expr (Located.elem_of e)
+				| TypedStaticMethod (_, m, _, e, _) when (Located.elem_of m) = "testM" -> 
+					type_of_expr (Located.elem_of e)
+				| _ -> find_m q
+			)
+	in let typed_tree = type_structure_tree tree
+	in let last_class = Located.elem_of (List.hd (List.rev typed_tree))
+	in let method_expr_type =  match last_class with 
+		| TypedClassdef (_, l) -> find_m l
+		| TypedClassdefWithParent (_, _, l) -> find_m l
+		| _ -> raise (TestError (UndefinedType("Any class")))
+	in assert_equal expType method_expr_type
+
+let build_method_expr_failure_test tree err =
+	let test _ = 
+		try 
+			print_endline ((Structure.string_of_structure_tree tree) ^ " => "
+				^ (Errors.string_of_error err));
+			print_endline "========================================";
+			type_structure_tree tree
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)
@@ -428,6 +462,89 @@ let test_binop _ =
 		(Binop(mk_none Beq, mk_none (String (mk_none "foo")), mk_none (Boolean (mk_none true))))
 		(Errors.TypeError("String", "Boolean"))
 
+let test_method_expr _ =
+		(*** Non static methods ***)
+		build_method_expr_success_test
+			IntType
+			(* class A { Int testM() {1} } *)
+			[mk_class "A" [mk_method_e "Int" "testM" [] (Int(mk_none 1))]];
+		build_method_expr_success_test
+			IntType
+			(* class A { Int i; Int testM() {i} } *)
+			[mk_class "A" [mk_attr "Int" "i"; mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
+		build_method_expr_success_test
+			IntType
+			(* class A { static Int i; Int testM() {i} } *)
+			[mk_class "A" [mk_sattr "Int" "i"; mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
+		build_method_expr_success_test
+			IntType
+			(* class A { Int i=1; Int testM() {i} } *)
+			[mk_class "A" [mk_attr_v "Int" "i" (Int(mk_none 1)); 
+				mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
+		build_method_expr_success_test
+			IntType
+			(* class A { static Int i=1; Int testM() {i} } *)
+			[mk_class "A" [mk_sattr_v "Int" "i" (Int(mk_none 1)); 
+				mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
+		build_method_expr_failure_test
+			(* class A { Int testM() {i} } *)
+			[mk_class "A" [mk_method_e "Int" "testM" [] (Var(mk_none "i"))]]
+			(Errors.UndefinedObject("i"));
+
+		(*** Static methods ***)
+		build_method_expr_success_test
+			IntType
+			(* class A { static Int testM() {1} } *)
+			[mk_class "A" [mk_smethod_e "Int" "testM" [] (Int(mk_none 1))]];
+		build_method_expr_failure_test
+			(* class A { Int i; static Int testM() {i} } *)
+			[mk_class "A" [mk_attr "Int" "i"; mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]]
+			(Errors.UndefinedObject("i"));
+		build_method_expr_success_test
+			IntType
+			(* class A { static Int i; static Int testM() {i} } *)
+			[mk_class "A" [mk_sattr "Int" "i"; mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]];
+	 	build_method_expr_failure_test
+			(* class A { Int i=1; static Int testM() {i} } *)
+			[mk_class "A" [mk_attr_v "Int" "i" (Int(mk_none 1)); 
+				mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]]
+			(Errors.UndefinedObject("i"));
+		build_method_expr_success_test
+			IntType
+			(* class A { static Int i=1; static Int testM() {i} } *)
+			[mk_class "A" [mk_sattr_v "Int" "i" (Int(mk_none 1)); 
+				mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]];
+
+		(*** Inherited attributes ***)
+		build_method_expr_success_test
+			IntType
+			(* class A { Int i } class B extends A { Int testM() {i} } *)
+			[mk_class "A" [mk_attr "Int" "i"];
+			 mk_class_p "B" "A" [mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
+		build_method_expr_failure_test
+			(* class A { static Int i } class B extends A { Int testM() {i} } *)
+			(* Static attributes are not inherited *)
+			[mk_class "A" [mk_sattr "Int" "i"];
+			 mk_class_p "B" "A" [mk_method_e "Int" "testM" [] (Var(mk_none "i"))]]
+			(Errors.UndefinedObject("i"));
+		build_method_expr_success_test
+			(CustomType "A")
+			(* class A { } class B { A testM() {new A} } *)
+			[mk_class "A" [];
+			 mk_class "B" [mk_method_e "A" "testM" [] (Instance(mk_none (Classname(mk_none "A"))))]];
+
+		(*** Test arguments of methods ***)
+		build_method_expr_success_test
+			IntType
+			(* class A { Int i; Int testM(Int a) {i+a} } *)
+			[mk_class "A" [mk_attr "Int" "i"; mk_method_e "Int" "testM" [mk_param_n "Int" "a"] 
+				(Binop(mk_none Badd, mk_none (Var(mk_none "i")), mk_none (Var(mk_none "a"))))]];
+		build_method_expr_failure_test
+			(* class A { Int i; Int testM(Boolean a) {i+a} } *)
+			[mk_class "A" [mk_attr "Int" "i"; mk_method_e "Int" "testM" [mk_param_n "Boolean" "a"] 
+				(Binop(mk_none Badd, mk_none (Var(mk_none "i")), mk_none (Var(mk_none "a"))))]]
+			(Errors.TypeError("Int", "Boolean"))
+ 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -449,6 +566,8 @@ let suite =
 		 "staticMethodCall">:: test_static_method_call;
 
 		 "binop">:: test_binop;
+
+		 "methodExpr">::test_method_expr;
 		]
 
 let () =

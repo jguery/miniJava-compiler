@@ -3,7 +3,8 @@
 	a static method. Static methods MUST only be called with : A.m(). a.m(), 
 	with a being an instance of A and m a static method, will be rejected. 
 	In the same way, only the static attributes can be seen in a static method.
-	Yet, a normal method can see static attributes.*)
+	Yet, a normal method can see static attributes. Also, static attributes are not
+	copied in a daughter class. *)
 
 open Located
 open Location
@@ -166,11 +167,17 @@ let rec methods_of_type currentClassEnv withStaticMethods locCn =
 
 (* This function takes a class environment and a located classname and
 returns the attributes associated to the classname in the env *)
-let rec attributes_of_type currentClassEnv locCn = match currentClassEnv with 
+let rec attributes_of_type currentClassEnv withStaticAttrs locCn = 
+	let rec parse_attrs attrs = if (withStaticAttrs) then attrs else
+		begin match attrs with 
+			| [] -> []
+			| t::q -> t.t; if (t.static) then parse_attrs q else t::(parse_attrs q)
+		end
+	in match currentClassEnv with 
 	| [] -> raise (PError(UndefinedType(string_of_classname (Located.elem_of locCn)), Located.loc_of locCn))
 	| t::q -> (match (Located.elem_of locCn) with
-			| Classname s when (Located.elem_of s) = t.name -> t.attributes
-			| _ -> attributes_of_type q locCn
+			| Classname s when (Located.elem_of s) = t.name -> parse_attrs t.attributes
+			| _ -> attributes_of_type q withStaticAttrs locCn
 		)
 
 (* This function builds a list of exprType, based on a list of params *)
@@ -261,7 +268,7 @@ let build_classes_env tree =
 			(* Yet, no need to copy the attributes list since we never change them in a son class *)
 			build_methods_and_attrs_env currentClassEnv 
 					(copy_methods_types_list (methods_of_type currentClassEnv false p)) 
-					(attributes_of_type currentClassEnv p) 
+					(attributes_of_type currentClassEnv false p) 
 					(Located.elem_of n) l 
 			in 
 			{name = Located.elem_of n ; 
