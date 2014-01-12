@@ -326,40 +326,35 @@ let rec params_to_vartype classesEnv nparams = match nparams with
 		)
 
 (* Check if a classTypeEnv is the parent of another classTypeEnv *)
-(* Parent can be IntType, for example... parent and daughter shoul be exprType *)
 let rec is_parent classesEnv parent daughter = 
-	let classdef_daughter = get_classdef classesEnv (string_of_expr_type daughter) Location.none
-	in match parent with
-		| ObjectType -> true
-		| IntType | BooleanType | StringType as t -> if (classdef_daughter.parent = t) then true else false
-		| CustomType n -> 
+	match parent, daughter with 
+	| ObjectType, ObjectType -> false
+	| (IntType | BooleanType | StringType), (IntType | BooleanType | StringType) -> false
+	| (IntType | BooleanType | StringType), ObjectType -> false
+	| ObjectType, (IntType | BooleanType | StringType) -> true
+	| ObjectType, CustomType n -> true
+	| CustomType n, (IntType | BooleanType | StringType | ObjectType) -> false
+	| _, CustomType nd -> 
+		let classdef_daughter = get_classdef classesEnv nd Location.none
+		in if (classdef_daughter.parent = parent) then true else 
+			(* We don't care about the location here, since it is not possible that get_classdef 
+				raises an error. The error would have been signaled when building the classes environment *)
+			is_parent classesEnv parent classdef_daughter.parent
 
-			if (classdef_daughter.parent = ObjectType || classdef_daughter.parent = IntType
-				|| classdef_daughter.parent = BooleanType || classdef_daughter.parent = StringType) 
-			then false else begin
-				let classdef_parent = get_classdef classesEnv (string_of_expr_type parent) Location.none
-				in if (classdef_daughter.parent = CustomType (classdef_parent.name)) then true else begin
-					(* We don't care about the location here, since it is not possible that get_classdef 
-					raises an error. The error would have been signaled when building the classes environment *)
-					is_parent classesEnv parent classdef_daughter.parent
-				end
-			end
 
 (* TODO This method should make sure real is not a child of exp, for exemple...
-Hence it should be renamed check_type_is_legal or sth like this *)
-let check_type_is exp real e = 
-	if (exp = real) then real else begin 
-
-		(make_error e exp real) 
-	end
+Hence it should be renamed check_type_is_legal classesEnv_legal or sth like this *)
+let check_type_is_legal classesEnv exp real e = 
+	if (exp = real || is_parent classesEnv exp real) then exp else  
+		make_error e exp real
 
 (* This function receives a non-located expr and returns a non-located typed_expr *)
 let rec type_expr classesEnv varEnv expr = 
 	let type_unop u e = 
 		let ne = type_expr classesEnv varEnv (Located.elem_of e) in 
 		let bufType = match (Located.elem_of u) with
-				| Udiff -> check_type_is BooleanType (type_of_expr ne) e
-				| Uminus -> check_type_is IntType (type_of_expr ne) e
+				| Udiff -> check_type_is_legal classesEnv BooleanType (type_of_expr ne) e
+				| Uminus -> check_type_is_legal classesEnv IntType (type_of_expr ne) e
 		in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 
 	and type_binop b e1 e2 =
@@ -368,18 +363,18 @@ let rec type_expr classesEnv varEnv expr =
 		in let bufType = match (Located.elem_of b) with
 				| Bsemicol -> type_of_expr ne2
 				| Badd | Bsub | Bmul | Bdiv | Bmod -> 
-					check_type_is IntType (type_of_expr ne1) e1;
-					check_type_is IntType (type_of_expr ne2) e2
+					check_type_is_legal classesEnv IntType (type_of_expr ne1) e1;
+					check_type_is_legal classesEnv IntType (type_of_expr ne2) e2
 				| Binf | Binfeq | Bsup | Bsupeq ->
-					check_type_is IntType (type_of_expr ne1) e1;
-					check_type_is IntType (type_of_expr ne2) e2;
+					check_type_is_legal classesEnv IntType (type_of_expr ne1) e1;
+					check_type_is_legal classesEnv IntType (type_of_expr ne2) e2;
 					BooleanType
 				| Bdiff | Beq -> 
-					check_type_is (type_of_expr ne1) (type_of_expr ne2) e2; 
+					check_type_is_legal classesEnv (type_of_expr ne1) (type_of_expr ne2) e2; 
 					BooleanType
 				| Band | Bor -> 
-					check_type_is BooleanType (type_of_expr ne1) e1;
-					check_type_is BooleanType (type_of_expr ne2) e2
+					check_type_is_legal classesEnv BooleanType (type_of_expr ne1) e1;
+					check_type_is_legal classesEnv BooleanType (type_of_expr ne2) e2
 		in TypedBinop(b, Located.mk_elem ne1 (Located.loc_of e1), 
 			Located.mk_elem ne2 (Located.loc_of e2), bufType)
 
@@ -387,11 +382,11 @@ let rec type_expr classesEnv varEnv expr =
 		let ni = type_expr classesEnv varEnv (Located.elem_of i) and
 		nt = type_expr classesEnv varEnv (Located.elem_of t) and
 		ne = type_expr classesEnv varEnv (Located.elem_of e) in
-		check_type_is BooleanType (type_of_expr ni) i;
+		check_type_is_legal classesEnv BooleanType (type_of_expr ni) i;
 		TypedCondition(Located.mk_elem ni (Located.loc_of i),
 			Located.mk_elem nt (Located.loc_of t),
 			Located.mk_elem ne (Located.loc_of e),
-			check_type_is (type_of_expr nt) (type_of_expr ne) e)
+			check_type_is_legal classesEnv (type_of_expr nt) (type_of_expr ne) e)
 
 	and type_method_call e m args = 
 		let rec do_l = function 
@@ -410,7 +405,7 @@ let rec type_expr classesEnv varEnv expr =
 	and type_local_variable c v ve e =
 		let nve = type_expr classesEnv varEnv (Located.elem_of ve)
 		and classname_type = type_of_classname classesEnv (Located.elem_of c)
-		in let ne = type_expr classesEnv ({t=check_type_is classname_type (type_of_expr nve) ve; 
+		in let ne = type_expr classesEnv ({t=check_type_is_legal classesEnv classname_type (type_of_expr nve) ve; 
 			n=(Located.elem_of v); attr=false; static=false}::varEnv) (Located.elem_of e)
 		in TypedLocal (c, v, Located.mk_elem nve (Located.loc_of ve), 
 			Located.mk_elem ne (Located.loc_of e), type_of_expr ne)
@@ -419,9 +414,10 @@ let rec type_expr classesEnv varEnv expr =
 		(* TODO check var is an attribute, and not a local var *)
 		let ne = type_expr classesEnv varEnv (Located.elem_of e)
 		in let tne = type_of_expr ne
+		and ta = get_var_type varEnv (Located.elem_of s) (Located.loc_of s) true
 		in 
-		check_type_is (get_var_type varEnv (Located.elem_of s) (Located.loc_of s) true) tne e;
-		TypedAttrAffect(s, Located.mk_elem ne (Located.loc_of e), tne)
+		check_type_is_legal classesEnv ta tne e;
+		TypedAttrAffect(s, Located.mk_elem ne (Located.loc_of e), ta)
 
 	and type_static_method_call c m args =
 		let rec do_l = function 
@@ -489,7 +485,7 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		in let ne = type_expr classesEnv ((parse_attributes currentClassEnv.attributes)@params_vartypes) 
 			(Located.elem_of e)
 		in
-		check_type_is return_type (type_of_expr ne) e;
+		check_type_is_legal classesEnv return_type (type_of_expr ne) e;
 		if (static) then TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
 			else TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
 
@@ -498,7 +494,7 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		let ne = type_expr classesEnv [] (Located.elem_of e)
 		in let tne = (type_of_expr ne)
 		in 
-		check_type_is (type_of_classname classesEnv (Located.elem_of c)) tne e;
+		check_type_is_legal classesEnv (type_of_classname classesEnv (Located.elem_of c)) tne e;
 		if (static) then TypedStaticAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne) 
 			else TypedAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne)
 

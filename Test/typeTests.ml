@@ -142,14 +142,14 @@ let test_instance _  =
 		[][] 
 		(* new A // undefined *)
 		(Instance(mk_none (Classname (mk_none "A"))))
-		(Errors.UndefinedType("A"))
-(* 	build_success_test
-		(CustomType "A")
+		(Errors.UndefinedType("A"));
+	build_success_test
+		(CustomType "A")  (* Is this logical ?? *)
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[]};
 		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
 		[{t=CustomType "A"; n="a"; attr=true; static=false;}]
 		(AttrAffect(mk_none "a", mk_none (Instance (mk_none (Classname (mk_none "B"))))))
- *)
+
 let test_method_call _ = 
 	build_success_test
 		(Typer.IntType)
@@ -619,6 +619,39 @@ let test_cast _ =
 		(* (A)i *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "i"))))
 
+let test_is_parent_function _ =
+	assert_equal true (is_parent [] ObjectType IntType);
+	assert_equal false (is_parent [] IntType ObjectType);
+	(* class A extends Int {} *)
+	assert_equal true (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]}] 
+		IntType (CustomType "A"));
+	(* class A extends Int {} *)
+	assert_equal true (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]}] 
+		ObjectType (CustomType "A"));
+	(* class A extends Int {} *)
+	assert_equal false (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]}] 
+		StringType (CustomType "A"));
+	(* class A {} class B extends A {} *)
+	assert_equal true (is_parent [{name="A"; parent=ObjectType; attributes=[]; methods=[]};
+		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]}] 
+		(CustomType "A") (CustomType "B"));
+	(* class A {} class B extends A {} *)
+	assert_equal false (is_parent [{name="A"; parent=ObjectType; attributes=[]; methods=[]};
+		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]}] 
+		(CustomType "B") (CustomType "A"));
+	(* class A {} class B extends A {} class C extends B {} *)
+	assert_equal true (is_parent [{name="A"; parent=ObjectType; attributes=[]; methods=[]};
+		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
+		{name="C"; parent=CustomType "B"; attributes=[]; methods=[]}] 
+		(CustomType "A") (CustomType "C"));
+	(* class A extends Int {} class B {} *)
+	assert_equal false (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]};
+		{name="B"; parent=ObjectType; attributes=[]; methods=[]}] 
+		(IntType) (CustomType "B"));
+	assert_equal false (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]};
+		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]}] (CustomType "B") (CustomType "A"))
+
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -643,6 +676,8 @@ let suite =
 		 "cast">:: test_cast;
 
 		 "methodExpr">::test_method_expr;
+
+		 "isParent">::test_is_parent_function;
 		]
 
 let () =
