@@ -1,0 +1,19 @@
+class A {
+	Int i
+	Boolean m(Int i2) {
+		if (i==i2) {
+			true
+		} else {
+			false
+		}
+	}
+}
+
+class B extends A {
+	Int m(Int i2) {
+		i+i2
+	}
+}
+
+A a = new B in 
+	a.m(1)

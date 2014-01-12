@@ -342,8 +342,7 @@ let rec is_parent classesEnv parent daughter =
 			is_parent classesEnv parent classdef_daughter.parent
 
 
-(* TODO This method should make sure real is not a child of exp, for exemple...
-Hence it should be renamed check_type_is_legal classesEnv_legal or sth like this *)
+(* This method makes sure the expected type is either the real type, or a parent of the real type *)
 let check_type_is_legal classesEnv exp real e = 
 	if (exp = real || is_parent classesEnv exp real) then exp else  
 		make_error e exp real
