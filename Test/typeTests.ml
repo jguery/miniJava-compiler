@@ -143,7 +143,13 @@ let test_instance _  =
 		(* new A // undefined *)
 		(Instance(mk_none (Classname (mk_none "A"))))
 		(Errors.UndefinedType("A"))
-
+(* 	build_success_test
+		(CustomType "A")
+		[{name="A"; parent=ObjectType; attributes=[]; methods=[]};
+		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
+		[{t=CustomType "A"; n="a"; attr=true; static=false;}]
+		(AttrAffect(mk_none "a", mk_none (Instance (mk_none (Classname (mk_none "B"))))))
+ *)
 let test_method_call _ = 
 	build_success_test
 		(Typer.IntType)
@@ -562,14 +568,14 @@ let test_cast _ =
 		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
 		(* (B)a *)
 		(Cast(mk_none (Classname (mk_none "B")), mk_none (Var (mk_none "a"))));
-	build_failure_test
+	build_success_test
+		(CustomType "A")
 		(* class A {} class B {} *)
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
 		 {name="B"; parent=ObjectType; attributes=[]; methods=[]}]
 		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
-		(* (A)b *)
-		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))
-		(Errors.IllegalCast("B", "A"));
+		(* (A)b ; definitly not legal, but we don't check it here *) 
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))));
 	build_success_test
 		(CustomType "A")
 		(* class A {} class B extends A {} class C extends B *)
@@ -597,7 +603,21 @@ let test_cast _ =
 		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
 		(* (C)((A)b) <= down casting, not legal but not detectable at this point *)
 		(Cast(mk_none (Classname (mk_none "C")), mk_none (
-			Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))))
+			Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))));
+	build_success_test
+		(IntType)
+		(* class A extends Int {} *)
+		[{name="A"; parent=IntType; attributes=[]; methods=[]}]
+		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
+		(* (Int)a *)
+		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Var (mk_none "a"))));
+	build_success_test
+		(CustomType "A")
+		(* class A extends Int {} *)
+		[{name="A"; parent=IntType; attributes=[]; methods=[]}]
+		[{n="i"; t=CustomType "Int"; attr=false; static=false;}]
+		(* (A)i *)
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "i"))))
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)

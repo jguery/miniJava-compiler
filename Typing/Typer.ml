@@ -291,11 +291,6 @@ let build_classes_env tree =
 (**************************************************************************************************)
 (******************* These functions translate a structure into a typed structure *****************)
 
-(* TODO This method should make sure real is not a child of exp, for exemple...
-Hence it should be renamed check_type_is_legal or sth like this *)
-let check_type_is exp real e = 
-	if (exp = real) then real else (make_error e exp real)
-
 let rec get_var_type varEnv var_string loc checkAttr = match varEnv with 
 	(* varEnv is a list of varType, and checkAttr is a boolean to make sure var is an attribute *)
 	| [] -> raise (PError(UndefinedObject(var_string), loc))
@@ -329,6 +324,34 @@ let rec params_to_vartype classesEnv nparams = match nparams with
 			| TypedParam(_, s, t) -> {t=t; n=Located.elem_of s; attr=false; static=false;}
 				::(params_to_vartype classesEnv q)
 		)
+
+(* Check if a classTypeEnv is the parent of another classTypeEnv *)
+(* Parent can be IntType, for example... parent and daughter shoul be exprType *)
+let rec is_parent classesEnv parent daughter = 
+	let classdef_daughter = get_classdef classesEnv (string_of_expr_type daughter) Location.none
+	in match parent with
+		| ObjectType -> true
+		| IntType | BooleanType | StringType as t -> if (classdef_daughter.parent = t) then true else false
+		| CustomType n -> 
+
+			if (classdef_daughter.parent = ObjectType || classdef_daughter.parent = IntType
+				|| classdef_daughter.parent = BooleanType || classdef_daughter.parent = StringType) 
+			then false else begin
+				let classdef_parent = get_classdef classesEnv (string_of_expr_type parent) Location.none
+				in if (classdef_daughter.parent = CustomType (classdef_parent.name)) then true else begin
+					(* We don't care about the location here, since it is not possible that get_classdef 
+					raises an error. The error would have been signaled when building the classes environment *)
+					is_parent classesEnv parent classdef_daughter.parent
+				end
+			end
+
+(* TODO This method should make sure real is not a child of exp, for exemple...
+Hence it should be renamed check_type_is_legal or sth like this *)
+let check_type_is exp real e = 
+	if (exp = real) then real else begin 
+
+		(make_error e exp real) 
+	end
 
 (* This function receives a non-located expr and returns a non-located typed_expr *)
 let rec type_expr classesEnv varEnv expr = 
@@ -414,26 +437,13 @@ let rec type_expr classesEnv varEnv expr =
 		in TypedStaticMethodCall(c, m, nargs, methoddef.return)
 
 	and type_cast c e =
-		let classdef_to = get_classdef classesEnv (string_of_classname (Located.elem_of c)) (Located.loc_of c)
+		let type_to = type_of_classname classesEnv (Located.elem_of c)
 		and ne = type_expr classesEnv varEnv (Located.elem_of e)
-		in let tne = type_of_expr ne
-		in let classdef_from = get_classdef classesEnv (string_of_expr_type tne) (Located.loc_of e)
-		in let rec is_parent parent daughter = 
-			if (daughter.parent = ObjectType) then false else begin
-				if (daughter.parent = CustomType (parent.name)) then true else begin
-					(* We don't care about the location here, since it is not possible that get_classdef 
-					raises an error. The error would have been signaled when building the classes environment *)
-					is_parent parent (get_classdef classesEnv (string_of_expr_type daughter.parent) 
-						(Located.loc_of e))
-				end
-			end
 		in 
-		if (is_parent classdef_to classdef_from 
-			(* Down-casting isn't always legal, must check that later in the compiler *)
-			|| is_parent classdef_from classdef_to) then 
-			TypedCast(c, Located.mk_elem ne (Located.loc_of e), CustomType classdef_to.name)
-		else raise (Errors.PError(IllegalCast(string_of_expr_type tne, string_of_classname (Located.elem_of c)),
-				Located.loc_of e))
+		(* Because it is impossible to know at that stage if casting is legal 
+			(because of down casting with parents being one of the basic types),
+		 	every cast is authorized here. *)
+		TypedCast(c, Located.mk_elem ne (Located.loc_of e), type_to)
 
 	in match expr with
   	| Null -> TypedNull
