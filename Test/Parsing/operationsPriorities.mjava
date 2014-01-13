@@ -11,3 +11,4 @@ true&&false||true
 true&&!true
 true&&!false||true
 2>=-3&&4!=!5
+2*2>=2

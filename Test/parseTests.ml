@@ -252,6 +252,7 @@ let test_operations_priorities _ =
 		 Expr_t(Binop_t(Bor, Binop_t(Band, Boolean_t true, Unop_t(Udiff, Boolean_t false)), Boolean_t true));
 		 Expr_t(Binop_t(Band, Binop_t(Bsupeq, Int_t 2, Unop_t(Uminus, Int_t 3)), 
 		 	Binop_t(Bdiff, Int_t 4, Unop_t(Udiff, Int_t 5))));
+		 Expr_t(Binop_t(Bsupeq, Binop_t(Bmul, Int_t 2, Int_t 2), Int_t 2));
 		]
 		"operationsPriorities.mjava"
 
