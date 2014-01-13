@@ -57,23 +57,32 @@ rule nexttoken = parse
   | digit+ as nb  { INT (int_of_string nb) }
   | uident         { UIDENT (Lexing.lexeme lexbuf) }
   | lident { LIDENT (Lexing.lexeme lexbuf) }
-  | _ { ERROR } (* This is just so any character is taken into account *)
+    (* This is a hack so that any character is matched with something *)
+  | _ { ERROR } 
 
+(* Builds a string which will be sent to the parser once quotes are closed. *)
 and parsestring res = parse
-  | "\\\\" { parsestring (add_char res '\\'; res) lexbuf }
-  | "\\n" { parsestring (add_char res '\n'; res) lexbuf }
-  | "\"" { STRING (contents res) }
-  | newline as c { incr_line lexbuf; parsestring res lexbuf } (* New line in the code are not considered *)
-  | eof { ERROR }
-  | _ as c { parsestring (add_char res c; res) lexbuf }
+  | "\\\\" { parsestring (Buffer.add_char res '\\'; res) lexbuf }
+    (* Understand that a \n means indeed a newline. *)
+  | "\\n" { parsestring (Buffer.add_char res '\n'; res) lexbuf }
+    (* Send the string object to the parser *)
+  | "\"" { STRING (Buffer.contents res) }
+    (* New line in the code are not considered *)
+  | newline as c { incr_line lexbuf; parsestring res lexbuf } 
+    (* This will raise a syntax error if a string is not closed when reaching the end of a file *)
+  | eof { ERROR } 
+  | _ as c { parsestring (Buffer.add_char res c; res) lexbuf }
 
 and parseLongcomment = parse
+    (* End of the comment, go on to the next token *)
   | "*/" { nexttoken lexbuf }
   | newline { incr_line lexbuf; parseLongcomment lexbuf }
+    (* This will raise a syntax error if a comment is not closed when reaching the end of a file *)
   | eof { ERROR }
   | _ { parseLongcomment lexbuf }
 
 and parseShortcomment = parse
+    (* End of the comment, go on to the next token *)
   | newline { incr_line lexbuf; nexttoken lexbuf }
   | eof           { EOF }
   | _ { parseShortcomment lexbuf }

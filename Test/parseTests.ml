@@ -1,3 +1,11 @@
+(* The tests found here follow the following rules: each unit test takes as an 
+input a test file - which can be found at Test/Parsing/*.mjava - and checks that 
+the parsed input matches an expected data structure. 
+To do that, a file is parsed into the ADT structure, just like when compiling, 
+and the location information is removed, because it is too hard to match every position
+of every element. The expected data structure is also the ADT structure, stripped 
+from its location information. We then only have to compare the two structures. *)
+
 open OUnit2
 
 open Main
@@ -12,7 +20,8 @@ open Expr
 
 (***************************************************************************)
 (* The data structure is redefined without the location information, 
-	so testing is clearer *)
+	so testing is clearer. "_t" here stands for "test". *)
+
 exception TestError of Errors.error
 
 type classname_t =
@@ -58,6 +67,7 @@ type class_or_expr_t =
 (***************************************************************************)
 (* Functions to translate from located data structure 
 	to non-located data structure *)
+
 let strip_classname_location = function
 	| Classname s -> Classname_t (Located.elem_of s)
 
@@ -91,7 +101,6 @@ let rec strip_expr_location expr =
   	| Cast(c,e) -> Cast_t(strip_classname_location (Located.elem_of c), strip_expr_location (Located.elem_of e))
   	| Instanceof(e,c) -> Instanceof_t(strip_expr_location (Located.elem_of e), 
   			strip_classname_location (Located.elem_of c))
-	
 
 let rec strip_params_locations l =
 	let rec strip_param_location = function
@@ -145,12 +154,18 @@ let parse_file str =
 
 (***************************************************************************)
 (* Utils for building tests *)
+
 let build_path filename = 
 	"Test/Parsing/" ^ filename
 
+(* Build a successful test. 
+expected_struct is the expected non-located data structure the file is expected to have
+filename is the filename of the file to test the data structure against. *)
 let build_success_test expected_struct filename = 
 	assert_equal expected_struct (parse_file (build_path filename))
 
+(* Build a test which expects an exception. The error in 
+params describes the expected exception. *)
 let build_failure_test filename error =
 	let test _ = 
 		try 
@@ -402,4 +417,5 @@ let suite =
 
 
 let () =
-  run_test_tt_main suite
+	(* Run the test suite *)
+  	run_test_tt_main suite

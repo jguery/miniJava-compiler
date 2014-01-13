@@ -5,7 +5,12 @@
   open Located
 %}
 
-%token EOF ERROR
+/* This token is defined to signal a lexical error. It is never used in this 
+parser on purpose, because when raised, the "error" litteral defined by menhir 
+will be called, thus raising a syntax exception. */
+%token ERROR 
+
+%token EOF
 %token CLASS EXTENDS 
 %token LBRAK RBRAK LPAR RPAR
 %token DIFF SEMICOL AFFECT COMMA POINT
@@ -23,6 +28,8 @@
 %token <bool> BOOLEAN
 
 %start structure_tree
+
+/* This parser returns a list of located classes and expressions. */
 %type <Structure.class_or_expr Located.t list> structure_tree
 
 
@@ -36,8 +43,8 @@
 %left BOPSBOOL
 %left AND
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
-%left MINUS PLUS	/* The usual calc precedence levels */
-%left BOPSNUM	/* Don't really understand their purpose, since MINUS, TIMES, etc are here... */ 
+%left MINUS PLUS
+%left BOPSNUM
 %left TIMES DIV MOD
 %left BOPSOTHER
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
