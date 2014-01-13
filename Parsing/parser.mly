@@ -26,15 +26,20 @@
 %type <Structure.class_or_expr Located.t list> structure_tree
 
 
+/* These priorities respect the Java priorities, as found at http://bmanolov.free.fr/javaoperators.php */
+
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left SEMICOL		/* Allows to link expressions before defining a new one (in structure_tree) */
 %left AFF 	/* The rule of affectation precedes the one of defining a new expression. */
 %left ATTRAFFECT /* The semicolon at the end of an attribute affectation ends the affectation */
-%left MINUS PLUS OR	/* The usual calc precedence levels */
-%left BOPSNUM BOPSBOOL	/* Don't really understand their purpose, since MINUS, TIMES, etc are here... */ 
-%left TIMES DIV MOD AND
-%left BOPSOTHER
+%left OR
+%left BOPSBOOL
+%left AND
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
+%left MINUS PLUS	/* The usual calc precedence levels */
+%left BOPSNUM	/* Don't really understand their purpose, since MINUS, TIMES, etc are here... */ 
+%left TIMES DIV MOD
+%left BOPSOTHER
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
 
 %%
