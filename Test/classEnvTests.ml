@@ -299,19 +299,17 @@ let test_attributes _ =
 				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_attr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
 	build_success_test
-		(* class A {Int i} class B extends A {Boolean b}*)
+		(* class A {static Int i} class B extends A {Boolean b}*)
 		[{name="A"; parent=ObjectType; 
 			attributes=[{n="i"; t=IntType; attr=true; static=true;};]; methods=[];};
 		 {name="B"; parent=CustomType "A"; attributes=[
-		 		{n="i"; t=IntType; attr=true; static=true;};
 				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_sattr "Int" "i"]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
 	build_success_test
-		(* class A {Int i} class B extends A {Boolean b}*)
+		(* class A {static Int i= 1} class B extends A {Boolean b}*)
 		[{name="A"; parent=ObjectType; 
 			attributes=[{n="i"; t=IntType; attr=true; static=true;};]; methods=[];};
 		 {name="B"; parent=CustomType "A"; attributes=[
-		 		{n="i"; t=IntType; attr=true; static=true;};
 				{n="b"; t=BooleanType; attr=true; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]]
 
