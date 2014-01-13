@@ -1,5 +1,5 @@
 class A extends B {
-	Int i
-	Boolean b
-	String s
+	Int i;
+	Boolean b;
+	String s;
 }

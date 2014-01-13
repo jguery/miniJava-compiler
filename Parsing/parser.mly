@@ -5,7 +5,12 @@
   open Located
 %}
 
-%token EOF ERROR
+/* This token is defined to signal a lexical error. It is never used in this 
+parser on purpose, because when raised, the "error" litteral defined by menhir 
+will be called, thus raising a syntax exception. */
+%token ERROR 
+
+%token EOF
 %token CLASS EXTENDS 
 %token LBRAK RBRAK LPAR RPAR
 %token DIFF SEMICOL AFFECT COMMA POINT
@@ -23,10 +28,12 @@
 %token <bool> BOOLEAN
 
 %start structure_tree
+
+/* This parser returns a list of located classes and expressions. */
 %type <Structure.class_or_expr Located.t list> structure_tree
 
 
-/* These priorities respect the Java priorities, as found at http://bmanolov.free.fr/javaoperators.php */
+/* These priorities follow the Java priorities, as found at http://bmanolov.free.fr/javaoperators.php */
 
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left SEMICOL		/* Allows to link expressions before defining a new one (in structure_tree) */
@@ -36,8 +43,8 @@
 %left BOPSBOOL
 %left AND
 %left INF INFEQ SUP SUPEQ DIFFEQ EQUALS
-%left MINUS PLUS	/* The usual calc precedence levels */
-%left BOPSNUM	/* Don't really understand their purpose, since MINUS, TIMES, etc are here... */ 
+%left MINUS PLUS
+%left BOPSNUM
 %left TIMES DIV MOD
 %left BOPSOTHER
 %right UNOPS	/* Resolves the -1-1 type conflict: what is the middle MINUS ? */
@@ -68,11 +75,11 @@ classname:
  | n=loc(UIDENT) { Classname(n) }
 
 attr_or_method:
- | t=loc(classname) n=loc(LIDENT) { Attr(t, n) }
- | STATIC t=loc(classname) n=loc(LIDENT) { StaticAttr(t, n) }
- | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { AttrWithValue(t, n, e) }
- 	/* Change in the grammar: attributes don't end with a semicolon */
- | STATIC t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { StaticAttrWithValue(t, n, e) }
+ | t=loc(classname) n=loc(LIDENT) SEMICOL { Attr(t, n) }
+ | STATIC t=loc(classname) n=loc(LIDENT) SEMICOL { StaticAttr(t, n) }
+ | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(terminal_expr) SEMICOL { AttrWithValue(t, n, e) }
+ 	/* Only terminal expressions in an attribute definition, to suppress conflicts */
+ | STATIC t=loc(classname) n=loc(LIDENT) AFFECT e=loc(terminal_expr) SEMICOL { StaticAttrWithValue(t, n, e) }
  | r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK
  	{ Method(r, n, p, e) }
  | STATIC r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK

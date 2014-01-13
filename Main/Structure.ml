@@ -1,3 +1,6 @@
+(* Every node of a data structure contains located elements. 
+This will allow better error handling once the parsing phase is over. *)
+
 open Located
 
 type binop =
@@ -9,10 +12,8 @@ type unop =
   | Uminus
 
 type classname =
-  | Classname of string Located.t (* Name of a class, which has to be defined, otherwise the compiler will fail (later) *)
-  (*| IntType 
-  | BooleanType
-  | StringType *)
+    (* Name of an already defined class *)
+  | Classname of string Located.t
 
 type expr = 
   | Null
@@ -24,12 +25,12 @@ type expr =
   | AttrAffect of string Located.t * expr Located.t
   | Unop of unop Located.t * expr Located.t
   | Binop of binop Located.t * expr Located.t * expr Located.t
-  | Local of classname Located.t * string Located.t * expr Located.t * expr Located.t
     (* Defines an expression used locally *)
+  | Local of classname Located.t * string Located.t * expr Located.t * expr Located.t
   | Condition of expr Located.t * expr Located.t * expr Located.t
   | MethodCall of expr Located.t * string Located.t * expr Located.t list
+    (* Static method calls are only applied to classnames, we don't allow an object to call it (unlike Java) *)
   | StaticMethodCall of classname Located.t * string Located.t * expr Located.t list
-    (* Static method calls are only applied ot classnames *)
   | Instance of classname Located.t
   | Cast of classname Located.t * expr Located.t
   | Instanceof of expr Located.t * classname Located.t
@@ -51,7 +52,11 @@ type class_or_expr =
   | Expr of expr Located.t
 
 
-(* Functions to translate an structure tree into a string *)
+(***********************************************************************************)
+(* Functions to translate a structure tree into a string *)
+(* These functions are only used to have a representation of the objects we deal with,
+and for debugging. *)
+
 let string_of_unop u = match u with
   | Udiff -> "not "
   | Uminus -> "minus "

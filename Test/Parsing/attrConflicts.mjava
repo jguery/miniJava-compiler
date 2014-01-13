@@ -1,6 +1,6 @@
 class A {
-	Int i=1
-	String s="foo"
-	Boolean b = String str = 1; "str" in 
-		1;"tr";true
+	Int i=1;
+	String s="foo";
+	Boolean b = (String str = 1; "str" in 
+		1;"tr";true);
 }
