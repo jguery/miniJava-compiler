@@ -26,7 +26,7 @@
 %type <Structure.class_or_expr Located.t list> structure_tree
 
 
-/* These priorities respect the Java priorities, as found at http://bmanolov.free.fr/javaoperators.php */
+/* These priorities follow the Java priorities, as found at http://bmanolov.free.fr/javaoperators.php */
 
 %left EXPR 	/* The continued definition of an expression is prioritary to the definition of a new one */
 %left SEMICOL		/* Allows to link expressions before defining a new one (in structure_tree) */
@@ -68,11 +68,11 @@ classname:
  | n=loc(UIDENT) { Classname(n) }
 
 attr_or_method:
- | t=loc(classname) n=loc(LIDENT) { Attr(t, n) }
- | STATIC t=loc(classname) n=loc(LIDENT) { StaticAttr(t, n) }
- | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { AttrWithValue(t, n, e) }
- 	/* Change in the grammar: attributes don't end with a semicolon */
- | STATIC t=loc(classname) n=loc(LIDENT) AFFECT e=loc(expr) { StaticAttrWithValue(t, n, e) }
+ | t=loc(classname) n=loc(LIDENT) SEMICOL { Attr(t, n) }
+ | STATIC t=loc(classname) n=loc(LIDENT) SEMICOL { StaticAttr(t, n) }
+ | t=loc(classname) n=loc(LIDENT) AFFECT e=loc(terminal_expr) SEMICOL { AttrWithValue(t, n, e) }
+ 	/* Only terminal expressions in an attribute definition, to suppress conflicts */
+ | STATIC t=loc(classname) n=loc(LIDENT) AFFECT e=loc(terminal_expr) SEMICOL { StaticAttrWithValue(t, n, e) }
  | r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK
  	{ Method(r, n, p, e) }
  | STATIC r=loc(classname) n=loc(LIDENT) LPAR p=separated_list(COMMA,loc(param)) RPAR LBRAK e=loc(expr) RBRAK

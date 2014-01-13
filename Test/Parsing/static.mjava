@@ -1,6 +1,6 @@
 class A {
-	static String b
-	static Boolean foo = true
+	static String b;
+	static Boolean foo = true;
 	static Boolean method(A a) {
 		b = "bar";
 		a.m2();
