@@ -6,6 +6,7 @@ open Structure
 open TestUtils
 open Errors
 open Typer
+open ClassesEnv
 
 exception TestError of Errors.error
 
@@ -13,17 +14,18 @@ exception TestError of Errors.error
 (***************************** Utils for building tests ******************************)
 
 let build_success_test expEnv structureTree =
+	let env = ClassesEnv.build_classes_env structureTree in
 	print_endline ((string_of_structure_tree structureTree) ^ " => " 
-		^ (string_of_env (Typer.build_classes_env structureTree)));
+		^ (string_of_env env));
 	print_endline "========================================";	
-	assert_equal expEnv (Typer.build_classes_env structureTree)
+	assert_equal expEnv env
 
 let build_failure_test structureTree undefinedType =
 	let test _ = 
 		try 
 			print_endline (string_of_structure_tree structureTree);
 			print_endline "========================================";
-			Typer.build_classes_env structureTree
+			ClassesEnv.build_classes_env structureTree
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)

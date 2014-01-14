@@ -1,5 +1,5 @@
 class A {
-	Int i
+	Int i;
 	Boolean m(Int i2) {
 		if (i==i2) {
 			true

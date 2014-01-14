@@ -4,6 +4,7 @@ open TestUtils
 open Located
 open Location
 open Structure
+open TypedStructure
 open Errors
 open Typer
 
@@ -13,9 +14,9 @@ exception TestError of Errors.error
 (***************************** Utils for building tests ******************************)
 
 let build_success_test expType classEnv varEnv expr =
-	print_endline ((Structure.string_of_expr expr) ^ " => " ^ (Typer.string_of_expr_type expType));
+	print_endline ((Structure.string_of_expr expr) ^ " => " ^ (TypedStructure.string_of_expr_type expType));
 	print_endline "========================================";
-	assert_equal expType (Typer.type_of_expr (Typer.type_expr classEnv varEnv expr))
+	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr classEnv varEnv expr))
 
 let build_failure_test classEnv varEnv expr err =
 	let test _ = 
@@ -33,7 +34,7 @@ let build_failure_test classEnv varEnv expr err =
 (* This test-builder evaluates the expression of the method called testM 
 in the last class of the structure tree *)
 let build_method_expr_success_test expType tree =
-	print_endline ((Structure.string_of_structure_tree tree) ^ " => " ^ (Typer.string_of_expr_type expType));
+	print_endline ((Structure.string_of_structure_tree tree) ^ " => " ^ (TypedStructure.string_of_expr_type expType));
 	print_endline "========================================";
 	let rec find_m l = match l with 
 		| [] -> raise (TestError (UndefinedMethod("TestType", "testM", [])))
@@ -70,29 +71,29 @@ let build_method_expr_failure_test tree err =
 
 let test_basic_types _ = 
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[] []
 		(* 10 *)
 		(Int(mk_none 10));
 	build_success_test
-		Typer.BooleanType
+		TypedStructure.BooleanType
 		[] []
 		(* false *)
 		(Boolean(mk_none false));
 	build_success_test
-		Typer.StringType
+		TypedStructure.StringType
 		[] []
 		(* "foobar" *)
 		(String(mk_none "foobar"))
 
 let test_unop _ = 
 	build_success_test 
-		Typer.BooleanType 
+		TypedStructure.BooleanType 
 		[] []
 		(* !true *)
 		(Unop(mk_none Udiff, mk_none (Boolean (mk_none true))));
 	build_success_test 
-		Typer.IntType 
+		TypedStructure.IntType 
 		[] []
 		(* -10 *)
 		(Unop(mk_none Uminus, mk_none (Int (mk_none 10))));
@@ -109,12 +110,12 @@ let test_unop _ =
 
 let test_conditions _ = 
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[] []
 		(* if (true) {1} else {2} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (Int (mk_none 1)), mk_none (Int (mk_none 2))));
 	build_success_test
-		Typer.StringType
+		TypedStructure.StringType
 		[] []
 		(* if (true) {"foo"} else {"bar"} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), 
@@ -132,7 +133,7 @@ let test_conditions _ =
 
 let test_instance _  =
 	build_success_test
-		(Typer.CustomType("A"))
+		(TypedStructure.CustomType("A"))
 		[{name="B"; parent=ObjectType; attributes=[]; methods=[]};
 		 {name="A"; parent=ObjectType; attributes=[]; methods=[]}]
 		[]
@@ -152,7 +153,7 @@ let test_instance _  =
 
 let test_method_call _ = 
 	build_success_test
-		(Typer.IntType)
+		(TypedStructure.IntType)
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
@@ -164,7 +165,7 @@ let test_method_call _ =
 		(* (new A).m() *)
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", []));
 	build_success_test
-		(Typer.CustomType "A")
+		(TypedStructure.CustomType "A")
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=CustomType "A";
@@ -241,27 +242,27 @@ let test_method_call _ =
 
 let test_instanceof _ = 
 	build_success_test
-		Typer.BooleanType
+		TypedStructure.BooleanType
 		[] []
 		(* 1 instanceof Int *)
 		(Instanceof(mk_none (Int (mk_none 1)), mk_none (Classname (mk_none "Int"))))
 
 let test_local_var _ = 
 	build_success_test
-		Typer.BooleanType
+		TypedStructure.BooleanType
 		[] []
 		(* Int i = 1 in true *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
 			mk_none (Boolean (mk_none true))));
 	build_success_test
-		(Typer.CustomType "A")
+		(TypedStructure.CustomType "A")
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}] 
 		[]
 		(* Int i = 1 in new A *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
 			mk_none (Instance(mk_none (Classname (mk_none "A"))))));
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[] []
 		(* Int i = 1 in i *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
@@ -275,12 +276,12 @@ let test_local_var _ =
 
 let test_var _ = 
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[] [{t=IntType; n="i"; attr=false; static=false;}]
 		(* i *)
 		(Var(mk_none "i"));
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[] 
 		[{t=StringType; n="a"; attr=false; static=false;};
 		 {t=IntType; n="i"; attr=false; static=false;}]
@@ -304,7 +305,7 @@ let test_var _ =
 
 let test_attr_affect _ = 
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[] [{t=IntType; n="i"; attr=true; static=false}]
 		(* i = 3 *)
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 3))));
@@ -326,7 +327,7 @@ let test_attr_affect _ =
 
 let test_static_method_call _ =
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
@@ -337,7 +338,7 @@ let test_static_method_call _ =
 		(* A.m() *)
 		(StaticMethodCall(mk_none (Classname (mk_none "A")), mk_none "m", []));
 	build_success_test
-		Typer.IntType
+		TypedStructure.IntType
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
@@ -354,7 +355,7 @@ let test_static_method_call _ =
 		[]
 		(StaticMethodCall(mk_none (Classname (mk_none "A")), mk_none "m", []));
 	build_success_test
-		Typer.StringType
+		TypedStructure.StringType
 		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
 			name="m";
 			return=IntType;
@@ -373,46 +374,46 @@ let test_static_method_call _ =
 
 let test_binop _ =
 	build_success_test
-		Typer.IntType [] []
+		TypedStructure.IntType [] []
 		(Binop(mk_none Bsemicol, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.IntType [] []
+		TypedStructure.IntType [] []
 		(Binop(mk_none Badd, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.IntType [] []
+		TypedStructure.IntType [] []
 		(Binop(mk_none Bsub, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.IntType [] []
+		TypedStructure.IntType [] []
 		(Binop(mk_none Bmul, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.IntType [] []
+		TypedStructure.IntType [] []
 		(Binop(mk_none Bdiv, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.IntType [] []
+		TypedStructure.IntType [] []
 		(Binop(mk_none Bmod, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Bsup, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Bsupeq, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Binf, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Binfeq, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Band, mk_none (Boolean (mk_none true)), mk_none (Boolean (mk_none true))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Bor, mk_none (Boolean (mk_none true)), mk_none (Boolean (mk_none true))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Bdiff, mk_none (String (mk_none "foo")), mk_none (String (mk_none "bar"))));
 	build_success_test
-		Typer.BooleanType [] []
+		TypedStructure.BooleanType [] []
 		(Binop(mk_none Beq, mk_none (String (mk_none "foo")), mk_none (String (mk_none "bar"))));
 
 	build_failure_test

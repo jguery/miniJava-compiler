@@ -1,8 +1,8 @@
 class A {
-	Boolean b = true
-	Int i = 2
-	Int i2
-	static String s
+	Boolean b = true;
+	Int i = 2;
+	Int i2;
+	static String s;
 	Int m() {
 		i
 	}

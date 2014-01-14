@@ -1,5 +1,6 @@
 open Located
 open Structure
+open TypedStructure
 open Typer
 
 let mk_none x = 

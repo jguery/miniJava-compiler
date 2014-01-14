@@ -4,6 +4,7 @@ open Errors
 open Location
 open Located
 open Expr
+open TypedStructure
 open Typer
 
 let execute lexbuf verbose = 
