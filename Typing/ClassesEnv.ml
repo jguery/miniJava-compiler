@@ -6,6 +6,7 @@ open Errors
 (**************************************************************************************************)
 (******************** These functions build the classes definition environment ********************)
 
+(* Basic types classes' environment. Object is the only one to have no parent. *)
 let static_classes_env = 
 	[
 		{name="Object"; parent=None; methods=[]; attributes=[]};
@@ -145,7 +146,9 @@ let rec build_shallow_types shallowClassesEnv tree =
 	in match tree with
 	| [] -> []
 	| t::q -> (match Located.elem_of t with 
-			| Classdef (n, _) | ClassdefWithParent (n, _, _) -> build_shallow_types shallowClassesEnv q
+			| Classdef (n, _) | ClassdefWithParent (n, _, _) -> 
+				{name=check_type_name n shallowClassesEnv; parent=None; methods=[]; attributes=[]} 
+					::(build_shallow_types shallowClassesEnv q)
 			| _ -> build_shallow_types shallowClassesEnv q
 		)
 

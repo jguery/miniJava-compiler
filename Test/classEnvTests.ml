@@ -12,9 +12,15 @@ exception TestError of Errors.error
 
 (*************************************************************************************)
 (***************************** Utils for building tests ******************************)
+let rec drop_first_items i l =
+	if i = 0 then l else begin
+		match l with 
+		| [] -> []
+		| t::q -> drop_first_items (i-1) q
+	end
 
 let build_success_test expEnv structureTree =
-	let env = ClassesEnv.build_classes_env structureTree in
+	let env = drop_first_items (List.length ClassesEnv.static_classes_env) (ClassesEnv.build_classes_env structureTree) in
 	print_endline ((string_of_structure_tree structureTree) ^ " => " 
 		^ (string_of_env env));
 	print_endline "========================================";	
@@ -381,7 +387,8 @@ let test_naming_conflicts _ =
 		[mk_class "A" [mk_method "Int" "m" []; mk_method "Boolean" "m" [];]]
 		(Errors.NamingError("m"))
 
-	(* Naming conflicts with methods. *)
+	(* Naming conflicts with classes. *)
+
 	
 
 (*************************************************************************************)
