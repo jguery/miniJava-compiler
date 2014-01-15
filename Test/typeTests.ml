@@ -16,7 +16,8 @@ exception TestError of Errors.error
 let build_success_test expType classEnv varEnv expr =
 	print_endline ((Structure.string_of_expr expr) ^ " => " ^ (TypedStructure.string_of_expr_type expType));
 	print_endline "========================================";
-	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr (ClassesEnv.static_classes_env@classEnv) varEnv expr))
+	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr None (ClassesEnv.static_classes_env@classEnv) varEnv 
+		(mk_none expr)))
 
 let build_failure_test classEnv varEnv expr err =
 	let test _ = 
@@ -24,7 +25,7 @@ let build_failure_test classEnv varEnv expr err =
 			print_endline ((Structure.string_of_expr expr) ^ " => " 
 				^ (Errors.string_of_error err));
 			print_endline "========================================";
-			Typer.type_expr (ClassesEnv.static_classes_env@classEnv) varEnv expr
+			Typer.type_expr None (ClassesEnv.static_classes_env@classEnv) varEnv (mk_none expr)
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)
@@ -656,6 +657,15 @@ let test_is_parent_function _ =
 		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] (Some "B") (Some "A"))
 
 
+let test_this _ = 
+	build_failure_test
+		[] []
+		(This)
+		(* Since, by default, we are not in a class. *)
+		(Errors.UndefinedObject("this"))
+
+		(* TODO go on with the tests *)
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -679,9 +689,11 @@ let suite =
 		 "binop">:: test_binop;
 		 "cast">:: test_cast;
 
-		 "methodExpr">::test_method_expr;
+		 "methodExpr">:: test_method_expr;
 
-		 "isParent">::test_is_parent_function;
+		 "isParent">:: test_is_parent_function;
+
+		 "this">:: test_this;
 		]
 
 let () =

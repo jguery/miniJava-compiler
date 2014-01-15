@@ -39,7 +39,7 @@ let rec copy_methods_types_list = function
 (********** Redifinition of the parsing structure, to which we add the type information ***********)
 type typed_expr = 
   | TypedNull
-  | TypedThis
+  | TypedThis of string
   | TypedInt of int Located.t * string
   | TypedBoolean of bool Located.t * string
   | TypedString of string Located.t * string
@@ -144,7 +144,7 @@ let rec type_of_expr = function
 	| TypedAttrAffect(_, _, t) | TypedUnop(_, _, t) | TypedBinop(_, _, _, t) 
 	| TypedLocal(_, _, _, _, t) | TypedCondition(_, _, _, t) | TypedMethodCall(_, _, _, t) 
 	| TypedStaticMethodCall(_, _, _, t) | TypedInstance(_, t) | TypedCast(_, _, t) 
-	| TypedInstanceof(_, _, t) -> t 
+	| TypedInstanceof(_, _, t) | TypedThis t -> t 
 
 let rec type_of_structure_tree tree = match tree with 
 	| [] -> []
