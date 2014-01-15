@@ -20,6 +20,7 @@ let rec drop_first_items i l =
 	end
 
 let build_success_test expEnv structureTree =
+	(* Don't take the static classes environment into account *)
 	let env = drop_first_items (List.length ClassesEnv.static_classes_env) (ClassesEnv.build_classes_env structureTree) in
 	print_endline ((string_of_structure_tree structureTree) ^ " => " 
 		^ (string_of_env env));
@@ -81,10 +82,10 @@ let test_basic_class _ =
 			return="Boolean";
 			static=false;
 			cl="A";
-			params=["String"; "B"]
+			params=["String"; "Int"]
 		};]}]
 		(*  class A { Int m(String s, B b) {..} } *)
-		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String"; mk_param "B"];]];
+		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String"; mk_param "Int"];]];
 
 	(* A class with no parent and two methods *)
 	build_success_test
@@ -93,7 +94,7 @@ let test_basic_class _ =
 			return="Boolean";
 			static=false;
 			cl="A";
-			params=["String"; "B"]
+			params=["String"; "Boolean"]
 		};{
 			name="m2";
 			return="String";
@@ -102,8 +103,20 @@ let test_basic_class _ =
 			params=[]
 		};]}]
 		(*  class A { Boolean m(String s, B b) {..} String m2() {..} } *)
-		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String"; mk_param "B"]; 
-			mk_method "String" "m2" [];]]
+		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String"; mk_param "Boolean"]; 
+			mk_method "String" "m2" [];]];
+
+	(* A class with one method which returns an undefined type. *)
+	build_failure_test
+		(* class A {B m() {}} *)
+		[mk_class "A" [mk_method "B" "m" []]]
+		(Errors.UndefinedType("B"));
+
+	(* A class with one method with one param which has an undefined type. *)
+	build_failure_test
+		(* class A {B m() {}} *)
+		[mk_class "A" [mk_method "Int" "m" [mk_param "B"]]]
+		(Errors.UndefinedType("B"))
 
 let test_many_classes _ =
 	(* Two classes with no method and no parent *)
@@ -268,6 +281,30 @@ let test_method_redefinition _ =
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
 		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"; mk_param "Boolean"]]]
 
+let test_method_overloading _ = 
+	build_success_test
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
+			name="m";
+			return="Int";
+			static=false;
+			cl="A";
+			params=["Int"]
+		};{
+			name="m";
+			return="Int";
+			static=false;
+			cl="A";
+			params=[]
+		};{
+			name="m";
+			return="Int";
+			static=false;
+			cl="A";
+			params=["Boolean"]
+		};]}]
+		[mk_class "A" [mk_method "Int" "m" [mk_param "Int"]; mk_method "Int" "m" []; 
+			mk_method "Int" "m" [mk_param "Boolean"]]]
+
 let test_attributes _ = 
 	build_success_test
 		(* class A {Int i} *)
@@ -382,12 +419,46 @@ let test_naming_conflicts _ =
 		[mk_class "A" [mk_attr "Int" "i"]; 
 		 mk_class_p "B" "A" [mk_attr "Boolean" "i"]]
 		(Errors.NamingError("i"));
-
 	build_failure_test
 		[mk_class "A" [mk_method "Int" "m" []; mk_method "Boolean" "m" [];]]
-		(Errors.NamingError("m"))
+		(Errors.NamingError("m"));
 
 	(* Naming conflicts with classes. *)
+	build_failure_test
+		(* Class A {} Class A {} *)
+		[mk_class "A" []; mk_class "A" []]
+		(Errors.NamingError("A"));
+	build_failure_test
+		(* Class Object {} *)
+		[mk_class "Object" [];]
+		(Errors.NamingError("Object"));
+	build_failure_test
+		(* Class Int {} *)
+		[mk_class "Int" [];]
+		(Errors.NamingError("Int"));
+	build_failure_test
+		(* Class String {} *)
+		[mk_class "String" [];]
+		(Errors.NamingError("String"));
+	build_failure_test
+		(* Class Boolean {} *)
+		[mk_class "Boolean" [];]
+		(Errors.NamingError("Boolean"));
+
+	(* Naming conflicts with methods. *)
+	build_failure_test
+		(* class A {Int m() {} Int m() {}} *)
+		[mk_class "A" [mk_method "Int" "m" []; mk_method "Int" "m" []]]
+		(Errors.NamingError("m"));
+	build_failure_test
+		(* class A {Int m() {} Int m(Int) {}} *)
+		[mk_class "A" [mk_method "Int" "m" [mk_param "Int"]; mk_method "Int" "m" [mk_param "Int"]]]
+		(Errors.NamingError("m"));
+	build_failure_test
+		(* Even if return type is different, still doesn't work *)
+		(* class A {Boolean m() {} Int m() {}} *)
+		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]; mk_method "Int" "m" [mk_param "Int"]]]
+		(Errors.NamingError("m"))
 
 	
 
@@ -402,6 +473,7 @@ let suite =
 		 "classWithParent">:: test_class_with_parent;
 
 		 "methodRedefinition">:: test_method_redefinition;
+		 "methodOverloading">:: test_method_overloading;
 
 		 "attributes">:: test_attributes;
 

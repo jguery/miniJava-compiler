@@ -29,27 +29,6 @@ let rec get_var_type varEnv var_string loc checkAttr = match varEnv with
 	| t::q -> if (t.n = var_string && (checkAttr = false || (checkAttr && t.attr))) 
 		then t.t else (get_var_type q var_string loc checkAttr)
 
-let rec get_classdef classesEnv classname_string loc = 
-	let s c = 
-		if (c.name = classname_string) then true else false
-	in match classesEnv with
-	| [] -> raise (PError(UndefinedType(classname_string), loc))
-	| t::q -> if (s t) then t else get_classdef q classname_string loc
-
-(* args_types is a list of exprType *)
-let rec get_methoddef classdef method_string args_types static loc = 
-	let s c = 
-		c.cl; if (c.name = method_string && c.params = args_types && c.static = static) then true else false
-	in let rec list_of_string_types = function
-		| [] -> []
-		| t::q -> (string_of_expr_type t)::(list_of_string_types q)
-	in let rec do_l = function 
-		| [] -> raise (PError(UndefinedMethod(classdef.name, method_string, 
-					(list_of_string_types args_types)), loc))
-		| t::q -> if (s t) then t else do_l q
-	in 
-	do_l classdef.methods
-
 let rec params_to_vartype classesEnv nparams = match nparams with 
 	| [] -> []
 	| t::q -> (match Located.elem_of t with 
@@ -138,7 +117,7 @@ let rec type_expr classesEnv varEnv expr =
 
 	and type_local_variable c v ve e =
 		let nve = type_expr classesEnv varEnv (Located.elem_of ve)
-		and classname_type = type_of_classname classesEnv (Located.elem_of c)
+		and classname_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
 		in let ne = type_expr classesEnv ({t=check_type_is_legal classesEnv (Some classname_type) (Some (type_of_expr nve)) ve; 
 			n=(Located.elem_of v); attr=false; static=false}::varEnv) (Located.elem_of e)
 		in TypedLocal (c, v, Located.mk_elem nve (Located.loc_of ve), 
@@ -167,7 +146,7 @@ let rec type_expr classesEnv varEnv expr =
 		in TypedStaticMethodCall(c, m, nargs, methoddef.return)
 
 	and type_cast c e =
-		let type_to = type_of_classname classesEnv (Located.elem_of c)
+		let type_to = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
 		and ne = type_expr classesEnv varEnv (Located.elem_of e)
 		in 
 		(* Because it is impossible to know at that stage if casting is legal 
@@ -199,7 +178,7 @@ let rec type_expr classesEnv varEnv expr =
 let rec type_params_list classesEnv params = match params with
 	| [] -> []
 	| t::q -> (match (Located.elem_of t) with 
-			| Param(c, s) -> Located.mk_elem (TypedParam(c, s, type_of_classname classesEnv (Located.elem_of c))) 
+			| Param(c, s) -> Located.mk_elem (TypedParam(c, s, type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c))) 
 					(Located.loc_of t)::(type_params_list classesEnv q)
 		)
 
@@ -214,7 +193,7 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 				| t::q -> t.t; if (t.static) then t::(parse_attributes q) else parse_attributes q
 			end
 		in let nparams = type_params_list classesEnv params
-		and return_type = type_of_classname classesEnv (Located.elem_of c)
+		and return_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c)
 		in let params_vartypes = params_to_vartype classesEnv nparams
 		in let ne = type_expr classesEnv ((parse_attributes currentClassEnv.attributes)@params_vartypes) 
 			(Located.elem_of e)
@@ -228,13 +207,13 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		let ne = type_expr classesEnv [] (Located.elem_of e)
 		in let tne = (type_of_expr ne)
 		in 
-		check_type_is_legal classesEnv (Some (type_of_classname classesEnv (Located.elem_of c))) (Some tne) e;
+		check_type_is_legal classesEnv (Some (type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c))) (Some tne) e;
 		if (static) then TypedStaticAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne) 
 			else TypedAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne)
 
 	in let typed_attr_or_method = function
-		| Attr (c, s) -> TypedAttr(c, s, type_of_classname classesEnv (Located.elem_of c))
-		| StaticAttr (c, s) -> TypedStaticAttr(c, s, type_of_classname classesEnv (Located.elem_of c))
+		| Attr (c, s) -> TypedAttr(c, s, type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c))
+		| StaticAttr (c, s) -> TypedStaticAttr(c, s, type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) )
 		| AttrWithValue (c, s, e) -> type_attr_with_value c s e false
 		| StaticAttrWithValue (c, s, e) -> type_attr_with_value c s e true
 		| Method (c, s, params, e) -> type_method c s params e false
