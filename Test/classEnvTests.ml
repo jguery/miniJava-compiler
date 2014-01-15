@@ -211,24 +211,31 @@ let test_method_redefinition _ =
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
 		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"]]];
 
-	(* Signatures of methods doesn't take return type into account for redefinition *)
+	(* Illegal redefinition: new return type isn't a child of the old one *)
+	build_failure_test
+		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
+		[mk_class "A" [mk_method "Boolean" "m" []]; mk_class_p "B" "A" [mk_method "Int" "m" []]]
+		(Errors.TypeError("Boolean", "Int"));
+
+	(* Legal redefinition: Boolean extends Object *)
 	build_success_test
 		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 				name="m";
-				return="Boolean";
+				return="Object";
 				static=false;
 				cl="A";
-				params=[]
+				params=["Int"]
 			};]};
 		 {name="B"; parent=Some("A"); attributes=[]; methods=[{
 				name="m";
-				return="Int";
+				return="Boolean";
 				static=false;
 				cl="B";
-				params=[]
+				params=["Int"]
 			};]};]
-		[mk_class "A" [mk_method "Boolean" "m" []]; mk_class_p "B" "A" [mk_method "Int" "m" []]];
+		[mk_class "A" [mk_method "Object" "m" [mk_param "Int"]]; 
+		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"]]];
 
 	(* Not a redefinition: params are different *)
 	build_success_test

@@ -15,28 +15,6 @@ let static_classes_env =
 		{name="Object"; parent=None; methods=[]; attributes=[]};
 	]
 
-(* Retrieve a class definition from the classes environment, with its name. *)
-let rec get_classdef classesEnv classname_string loc = 
-	let s c = 
-		if (c.name = classname_string) then true else false
-	in match classesEnv with
-	| [] -> raise (PError(UndefinedType(classname_string), loc))
-	| t::q -> if (s t) then t else get_classdef q classname_string loc
-
-(* args_types is a list of strings *)
-let rec get_methoddef classdef method_string args_types static loc = 
-	let s c = 
-		c.cl; if (c.name = method_string && c.params = args_types && c.static = static) then true else false
-	in let rec list_of_string_types = function
-		| [] -> []
-		| t::q -> (string_of_expr_type t)::(list_of_string_types q)
-	in let rec do_l = function 
-		| [] -> raise (PError(UndefinedMethod(classdef.name, method_string, 
-					(list_of_string_types args_types)), loc))
-		| t::q -> if (s t) then t else do_l q
-	in 
-	do_l classdef.methods
-
 (* This function checks that a type exists for the given classname, and returns it. *)
 (* The classname is a non-located Structure.classname. *)
 let rec type_of_classname currentClassesEnv cn loc = 
@@ -98,10 +76,13 @@ let add_method_to_env currentClassesEnv methodsEnv classname m =
 			| s when s = classname -> raise (PError(Errors.NamingError(Located.elem_of n), Located.loc_of n))
 				(* Trying to redefine a method from a parent (s can't be anything else than the parent here) *)
 			| s when s <> classname -> 
-					(* TODO: check return type is a parent, but can't make it in the same pass..... SHIT *)
+					let new_return = type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r) 
+					in
+					(* We check that the new return type is at least a child of the redefined method's return type *)
+					check_type_is_legal currentClassesEnv  (Some methodType.return) (Some new_return) (Located.loc_of r);
 
 					methodType.cl <- classname;
-					methodType.return <- type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r);
+					methodType.return <- new_return;
 					true
 		end else
 			false
@@ -111,7 +92,6 @@ let add_method_to_env currentClassesEnv methodsEnv classname m =
 		(* Method doesn't already exist in the methodsEnv, we add it *)
 		| [] -> 
 			let build_method r n p static = 
-				(* TODO need to check if return type is leggit *)
 				{	
 					name = Located.elem_of n; 
 					return = type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r); 

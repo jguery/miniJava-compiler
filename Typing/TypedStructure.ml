@@ -1,4 +1,5 @@
 open Structure
+open Errors
 
 type varType = {
 	n : string;
@@ -82,6 +83,57 @@ let rec string_of_expr_types = function
 	| [] -> ""
 	| [t] -> (string_of_expr_type t)
 	| t::q -> (string_of_expr_type t) ^ ", " ^ (string_of_expr_types q)
+
+
+let make_type_error exp_type real_type loc = 
+	raise (PError(TypeError(Option.get exp_type, Option.get real_type), loc))
+
+(* Retrieve a class definition from the classes environment, with its name. *)
+let rec get_classdef classesEnv classname_string loc = 
+	let s c = 
+		if (c.name = classname_string) then true else false
+	in match classesEnv with
+	| [] -> raise (PError(UndefinedType(classname_string), loc))
+	| t::q -> if (s t) then t else get_classdef q classname_string loc
+
+(* args_types is a list of strings *)
+let rec get_methoddef classdef method_string args_types static loc = 
+	let s c = 
+		c.cl; if (c.name = method_string && c.params = args_types && c.static = static) then true else false
+	in let rec list_of_string_types = function
+		| [] -> []
+		| t::q -> (string_of_expr_type t)::(list_of_string_types q)
+	in let rec do_l = function 
+		| [] -> raise (PError(UndefinedMethod(classdef.name, method_string, 
+					(list_of_string_types args_types)), loc))
+		| t::q -> if (s t) then t else do_l q
+	in 
+	do_l classdef.methods
+
+(* Check if a type is the parent of another type *)
+(* Parent and daughter are of type string option *)
+let rec is_parent classesEnv parent daughter =
+	match parent, daughter with 
+	| None, Some "Object" -> true
+	| None, _ -> false
+	| _, None -> false
+	| Some "Object", Some "Object" -> false
+	| Some "Object", Some _ -> true
+	| Some _, Some "Object" -> false
+	| _, Some nd -> 
+		let classdef_daughter = get_classdef classesEnv nd Location.none
+		in if (classdef_daughter.parent = parent) then true else 
+			(* We don't care about the location here, since it is not possible that get_classdef 
+				raises an error. The error would have been signaled when building the classes environment *)
+			is_parent classesEnv parent classdef_daughter.parent
+
+
+(* This method makes sure the expected type is either the real type, or a parent of the real type *)
+(* exp and real are of type string option *)
+(* It returns the expected type, a string, if it is legal. Raises an exception otherwise *)
+let check_type_is_legal classesEnv exp real loc = 
+	if (exp = real || is_parent classesEnv exp real) then Option.get exp else  
+		make_type_error exp real loc
 
 
 (**************************************************************************************************)

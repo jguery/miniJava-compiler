@@ -1,6 +1,6 @@
 class A {
 	Int i;
-	Boolean m(Int i2) {
+	Object m(Int i2) {
 		if (i==i2) {
 			true
 		} else {
