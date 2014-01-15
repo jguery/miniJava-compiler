@@ -1,3 +1,4 @@
+open Option
 open Structure
 open TypedStructure
 open Errors
@@ -5,11 +6,16 @@ open Errors
 (**************************************************************************************************)
 (******************** These functions build the classes definition environment ********************)
 
+let static_classes_env = 
+	[
+		{name="Object"; parent=None; methods=[]; attributes=[]};
+		{name="Int"; parent=Some "Object"; methods=[]; attributes=[]};
+		{name="String"; parent=Some "Object"; methods=[]; attributes=[]};
+		{name="Boolean"; parent=Some "Object"; methods=[]; attributes=[]};
+	]
+
 let type_of_classname currentClassEnv cn = match cn with 
-	| Classname s when (Located.elem_of s) = "Int" ->  IntType
-	| Classname s when (Located.elem_of s) = "Boolean" -> BooleanType
-	| Classname s when (Located.elem_of s) = "String" -> StringType
-	| Classname s -> CustomType (Located.elem_of s) 	
+	| Classname s -> Located.elem_of s
 		(* TODO: check if the type already is in the env. Or later ? Since 
 		classes of a same file are supposed to know each other recursively. 
 		Yet, a parent needs to be defined before, and so we need to check to add
@@ -45,10 +51,10 @@ let rec attributes_of_type currentClassEnv withStaticAttrs locCn =
 			| _ -> attributes_of_type q withStaticAttrs locCn
 		)
 
-(* This function builds a list of exprType, based on a list of params *)
+(* This function builds a list of string types, based on a list of params *)
 let rec build_params_env currentClassEnv p = 
 	let rec build_param_env = function
-		| Param (c, n) -> type_of_classname currentClassEnv (Located.elem_of c); 
+		| Param (c, n) -> type_of_classname currentClassEnv (Located.elem_of c)
 	in match p with 
 	| [] -> []
 	| t::q -> (build_param_env (Located.elem_of t))::(build_params_env currentClassEnv q)
@@ -65,15 +71,14 @@ let add_method_to_env currentClassEnv methodsEnv classname m =
 		if ((Located.elem_of n) = methodType.name && (build_params_env currentClassEnv p) = methodType.params) then begin
 			match methodType.cl with 
 				(* Trying to redefine an method already defined in the SAME class... *)
-			| CustomType s when s = classname -> raise (PError(Errors.NamingError(Located.elem_of n), Located.loc_of n))
+			| s when s = classname -> raise (PError(Errors.NamingError(Located.elem_of n), Located.loc_of n))
 				(* Trying to redefine a method from a parent (s can't be anything else than the parent here) *)
-			| CustomType s when s <> classname -> 
+			| s when s <> classname -> 
 					(* TODO: check return type is a parent, but can't make it in the same pass..... SHIT *)
 
-					methodType.cl <- CustomType classname;
+					methodType.cl <- classname;
 					methodType.return <- type_of_classname currentClassEnv (Located.elem_of r);
 					true
-			| _ -> false	(* This is in case we later define methods for basic types... *)
 		end else
 			false
 
@@ -86,7 +91,7 @@ let add_method_to_env currentClassEnv methodsEnv classname m =
 					name = Located.elem_of n; 
 					return = type_of_classname currentClassEnv (Located.elem_of r); 
 					static = static;
-					cl = CustomType classname;
+					cl = classname;
 					params = (build_params_env currentClassEnv p)
 				}
 			in (match m with 
@@ -153,7 +158,7 @@ let build_classes_env tree =
 		| Classdef(n, l) -> let (methods, attrs) = 
 			build_methods_and_attrs_env currentClassEnv [] [] (Located.elem_of n) l
 			in 
-			{name = Located.elem_of n; parent = ObjectType; methods = methods; attributes = attrs}
+			{name = Located.elem_of n; parent = Some "Object"; methods = methods; attributes = attrs}
 		| ClassdefWithParent(n, p, l) -> let (methods, attrs) =
 			(* Use copy_methods_types_list to get an independent copy of the parent methods *)
 			(* Yet, no need to copy the attributes list since we never change them in a son class *)
@@ -164,7 +169,7 @@ let build_classes_env tree =
 			in 
 			{
 				name = Located.elem_of n ; 
-				parent = type_of_classname currentClassEnv (Located.elem_of p) ;
+				parent = Some (type_of_classname currentClassEnv (Located.elem_of p));
 				methods = methods;
 				attributes = attrs;
 			}
@@ -177,4 +182,4 @@ let build_classes_env tree =
 				| _ -> build_rec_classes_env ((build_class_env env (Located.elem_of t))::env) q
 			)
 	(* Use this because we need to access the environment at any moment *)
-	in List.rev (build_rec_classes_env [] tree)
+	in List.rev (build_rec_classes_env static_classes_env tree)

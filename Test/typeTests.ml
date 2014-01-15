@@ -16,7 +16,7 @@ exception TestError of Errors.error
 let build_success_test expType classEnv varEnv expr =
 	print_endline ((Structure.string_of_expr expr) ^ " => " ^ (TypedStructure.string_of_expr_type expType));
 	print_endline "========================================";
-	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr classEnv varEnv expr))
+	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr (ClassesEnv.static_classes_env@classEnv) varEnv expr))
 
 let build_failure_test classEnv varEnv expr err =
 	let test _ = 
@@ -24,7 +24,7 @@ let build_failure_test classEnv varEnv expr err =
 			print_endline ((Structure.string_of_expr expr) ^ " => " 
 				^ (Errors.string_of_error err));
 			print_endline "========================================";
-			Typer.type_expr classEnv varEnv expr
+			Typer.type_expr (ClassesEnv.static_classes_env@classEnv) varEnv expr
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)
@@ -71,29 +71,29 @@ let build_method_expr_failure_test tree err =
 
 let test_basic_types _ = 
 	build_success_test
-		TypedStructure.IntType
+		"Int"
 		[] []
 		(* 10 *)
 		(Int(mk_none 10));
 	build_success_test
-		TypedStructure.BooleanType
+		"Boolean"
 		[] []
 		(* false *)
 		(Boolean(mk_none false));
 	build_success_test
-		TypedStructure.StringType
+		"String"
 		[] []
 		(* "foobar" *)
 		(String(mk_none "foobar"))
 
 let test_unop _ = 
 	build_success_test 
-		TypedStructure.BooleanType 
+		"Boolean" 
 		[] []
 		(* !true *)
 		(Unop(mk_none Udiff, mk_none (Boolean (mk_none true))));
 	build_success_test 
-		TypedStructure.IntType 
+		"Int" 
 		[] []
 		(* -10 *)
 		(Unop(mk_none Uminus, mk_none (Int (mk_none 10))));
@@ -110,12 +110,12 @@ let test_unop _ =
 
 let test_conditions _ = 
 	build_success_test
-		TypedStructure.IntType
+		"Int"
 		[] []
 		(* if (true) {1} else {2} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (Int (mk_none 1)), mk_none (Int (mk_none 2))));
 	build_success_test
-		TypedStructure.StringType
+		"String"
 		[] []
 		(* if (true) {"foo"} else {"bar"} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), 
@@ -133,9 +133,9 @@ let test_conditions _ =
 
 let test_instance _  =
 	build_success_test
-		(TypedStructure.CustomType("A"))
-		[{name="B"; parent=ObjectType; attributes=[]; methods=[]};
-		 {name="A"; parent=ObjectType; attributes=[]; methods=[]}]
+		(("A"))
+		[{name="B"; parent=Some "Object"; attributes=[]; methods=[]};
+		 {name="A"; parent=Some "Object"; attributes=[]; methods=[]}]
 		[]
 		(* new A *)
 		(Instance(mk_none (Classname (mk_none "A"))));
@@ -145,32 +145,32 @@ let test_instance _  =
 		(Instance(mk_none (Classname (mk_none "A"))))
 		(Errors.UndefinedType("A"));
 	build_success_test
-		(CustomType "A")  (* Is this logical ?? *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]};
-		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
-		[{t=CustomType "A"; n="a"; attr=true; static=false;}]
+		("A")  (* Is this logical ?? *)
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
+		[{t="A"; n="a"; attr=true; static=false;}]
 		(AttrAffect(mk_none "a", mk_none (Instance (mk_none (Classname (mk_none "B"))))))
 
 let test_method_call _ = 
 	build_success_test
-		(TypedStructure.IntType)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		("Int")
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=false;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
 		};]}]
 		[]
 		(* (new A).m() *)
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", []));
 	build_success_test
-		(TypedStructure.CustomType "A")
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		("A")
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=CustomType "A";
+			return="A";
 			static=false;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
 		};]}]
 		[]
@@ -178,11 +178,11 @@ let test_method_call _ =
 		(MethodCall(mk_none (MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [])), 
 			mk_none "m", []));
 	build_failure_test
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=false;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
 		};]}]
 		[]
@@ -190,11 +190,11 @@ let test_method_call _ =
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m2", []))
 		(Errors.UndefinedMethod("A", "m2", []));
 	build_failure_test
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=false;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
 		};]}]
 		[]
@@ -202,24 +202,24 @@ let test_method_call _ =
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [mk_none (Int (mk_none 1))]))
 		(Errors.UndefinedMethod("A", "m", ["Int"]));
 	build_success_test
-		(IntType)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		("Int")
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=false;
-			cl=CustomType "A";
-			params=[IntType]
+			cl="A";
+			params=["Int"]
 		};]}]
 		[]
 		(* (new A).m(1) *)
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", [mk_none (Int (mk_none 1))]));
 	build_failure_test
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=false;
-			cl=CustomType "A";
-			params=[IntType]
+			cl="A";
+			params=["Int"]
 		};]}]
 		[]
 		(* (new A).m(1, true) *)
@@ -227,11 +227,11 @@ let test_method_call _ =
 			[mk_none (Int (mk_none 1)); mk_none (Boolean (mk_none true))]))
 		(Errors.UndefinedMethod("A", "m", ["Int"; "Boolean"]));
 	build_failure_test
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=true;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
 		};]}]
 		[]
@@ -242,27 +242,27 @@ let test_method_call _ =
 
 let test_instanceof _ = 
 	build_success_test
-		TypedStructure.BooleanType
+		"Boolean"
 		[] []
 		(* 1 instanceof Int *)
 		(Instanceof(mk_none (Int (mk_none 1)), mk_none (Classname (mk_none "Int"))))
 
 let test_local_var _ = 
 	build_success_test
-		TypedStructure.BooleanType
+		"Boolean"
 		[] []
 		(* Int i = 1 in true *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
 			mk_none (Boolean (mk_none true))));
 	build_success_test
-		(TypedStructure.CustomType "A")
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}] 
+		("A")
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}] 
 		[]
 		(* Int i = 1 in new A *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
 			mk_none (Instance(mk_none (Classname (mk_none "A"))))));
 	build_success_test
-		TypedStructure.IntType
+		"Int"
 		[] []
 		(* Int i = 1 in i *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (Int (mk_none 1)), 
@@ -276,97 +276,97 @@ let test_local_var _ =
 
 let test_var _ = 
 	build_success_test
-		TypedStructure.IntType
-		[] [{t=IntType; n="i"; attr=false; static=false;}]
+		"Int"
+		[] [{t="Int"; n="i"; attr=false; static=false;}]
 		(* i *)
 		(Var(mk_none "i"));
 	build_success_test
-		TypedStructure.IntType
+		"Int"
 		[] 
-		[{t=StringType; n="a"; attr=false; static=false;};
-		 {t=IntType; n="i"; attr=false; static=false;}]
+		[{t="String"; n="a"; attr=false; static=false;};
+		 {t="Int"; n="i"; attr=false; static=false;}]
 		(* i *)
 		(Var(mk_none "i"));
 	build_failure_test
-		[] [{t=IntType; n="i"; attr=false; static=false;}]
+		[] [{t="Int"; n="i"; attr=false; static=false;}]
 		(* a *)
 		(Var(mk_none "a"))
 		(Errors.UndefinedObject("a"));
 	build_failure_test
-		[] [{t=IntType; n="ii"; attr=false; static=false;}]
+		[] [{t="Int"; n="ii"; attr=false; static=false;}]
 		(* a *)
 		(Var(mk_none "i"))
 		(Errors.UndefinedObject("i"));
 	build_failure_test
-		[] [{t=IntType; n="i"; attr=false; static=false;}]
+		[] [{t="Int"; n="i"; attr=false; static=false;}]
 		(* a *)
 		(Var(mk_none "ii"))
 		(Errors.UndefinedObject("ii"))
 
 let test_attr_affect _ = 
 	build_success_test
-		TypedStructure.IntType
-		[] [{t=IntType; n="i"; attr=true; static=false}]
+		"Int"
+		[] [{t="Int"; n="i"; attr=true; static=false}]
 		(* i = 3 *)
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 3))));
 	build_failure_test
-		[] [{t=IntType; n="i"; attr=true; static=false}]
+		[] [{t="Int"; n="i"; attr=true; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (String (mk_none "foo"))))
 		(Errors.TypeError("Int", "String"));
 	build_failure_test
-		[] [{t=IntType; n="a"; attr=true; static=false}]
+		[] [{t="Int"; n="a"; attr=true; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (String (mk_none "foo"))))
 		(Errors.UndefinedObject("i"));
 	build_failure_test
-		[] [{t=IntType; n="i"; attr=false; static=false}]
+		[] [{t="Int"; n="i"; attr=false; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 1))))
 		(Errors.UndefinedObject("i")) (* Undefined because i is not an attribute *)
 
 let test_static_method_call _ =
 	build_success_test
-		TypedStructure.IntType
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		"Int"
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=true;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
 		};]}] []
 		(* A.m() *)
 		(StaticMethodCall(mk_none (Classname (mk_none "A")), mk_none "m", []));
 	build_success_test
-		TypedStructure.IntType
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		"Int"
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=true;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
-		};]}; {name="B"; parent=CustomType "A"; attributes=[]; methods=[{
+		};]}; {name="B"; parent=Some "A"; attributes=[]; methods=[{
 			name="m";
-			return=StringType;
+			return="String";
 			static=true;
-			cl=CustomType "B";
+			cl="B";
 			params=[]
 		};]};] 
 		[]
 		(StaticMethodCall(mk_none (Classname (mk_none "A")), mk_none "m", []));
 	build_success_test
-		TypedStructure.StringType
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[{
+		"String"
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m";
-			return=IntType;
+			return="Int";
 			static=true;
-			cl=CustomType "A";
+			cl="A";
 			params=[]
-		};]}; {name="B"; parent=CustomType "A"; attributes=[]; methods=[{
+		};]}; {name="B"; parent=Some "A"; attributes=[]; methods=[{
 			name="m";
-			return=StringType;
+			return="String";
 			static=true;
-			cl=CustomType "B";
+			cl="B";
 			params=[]
 		};]};] 
 		[]
@@ -374,46 +374,46 @@ let test_static_method_call _ =
 
 let test_binop _ =
 	build_success_test
-		TypedStructure.IntType [] []
+		"Int" [] []
 		(Binop(mk_none Bsemicol, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.IntType [] []
+		"Int" [] []
 		(Binop(mk_none Badd, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.IntType [] []
+		"Int" [] []
 		(Binop(mk_none Bsub, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.IntType [] []
+		"Int" [] []
 		(Binop(mk_none Bmul, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.IntType [] []
+		"Int" [] []
 		(Binop(mk_none Bdiv, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.IntType [] []
+		"Int" [] []
 		(Binop(mk_none Bmod, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Bsup, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Bsupeq, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Binf, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Binfeq, mk_none (Int (mk_none 1)), mk_none (Int (mk_none 1))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Band, mk_none (Boolean (mk_none true)), mk_none (Boolean (mk_none true))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Bor, mk_none (Boolean (mk_none true)), mk_none (Boolean (mk_none true))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Bdiff, mk_none (String (mk_none "foo")), mk_none (String (mk_none "bar"))));
 	build_success_test
-		TypedStructure.BooleanType [] []
+		"Boolean" [] []
 		(Binop(mk_none Beq, mk_none (String (mk_none "foo")), mk_none (String (mk_none "bar"))));
 
 	build_failure_test
@@ -472,24 +472,24 @@ let test_binop _ =
 let test_method_expr _ =
 		(*** Non static methods ***)
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { Int testM() {1} } *)
 			[mk_class "A" [mk_method_e "Int" "testM" [] (Int(mk_none 1))]];
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { Int i; Int testM() {i} } *)
 			[mk_class "A" [mk_attr "Int" "i"; mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { static Int i; Int testM() {i} } *)
 			[mk_class "A" [mk_sattr "Int" "i"; mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { Int i=1; Int testM() {i} } *)
 			[mk_class "A" [mk_attr_v "Int" "i" (Int(mk_none 1)); 
 				mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { static Int i=1; Int testM() {i} } *)
 			[mk_class "A" [mk_sattr_v "Int" "i" (Int(mk_none 1)); 
 				mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
@@ -500,7 +500,7 @@ let test_method_expr _ =
 
 		(*** Static methods ***)
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { static Int testM() {1} } *)
 			[mk_class "A" [mk_smethod_e "Int" "testM" [] (Int(mk_none 1))]];
 		build_method_expr_failure_test
@@ -508,7 +508,7 @@ let test_method_expr _ =
 			[mk_class "A" [mk_attr "Int" "i"; mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]]
 			(Errors.UndefinedObject("i"));
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { static Int i; static Int testM() {i} } *)
 			[mk_class "A" [mk_sattr "Int" "i"; mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]];
 	 	build_method_expr_failure_test
@@ -517,14 +517,14 @@ let test_method_expr _ =
 				mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]]
 			(Errors.UndefinedObject("i"));
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { static Int i=1; static Int testM() {i} } *)
 			[mk_class "A" [mk_sattr_v "Int" "i" (Int(mk_none 1)); 
 				mk_smethod_e "Int" "testM" [] (Var(mk_none "i"))]];
 
 		(*** Inherited attributes ***)
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { Int i } class B extends A { Int testM() {i} } *)
 			[mk_class "A" [mk_attr "Int" "i"];
 			 mk_class_p "B" "A" [mk_method_e "Int" "testM" [] (Var(mk_none "i"))]];
@@ -535,14 +535,14 @@ let test_method_expr _ =
 			 mk_class_p "B" "A" [mk_method_e "Int" "testM" [] (Var(mk_none "i"))]]
 			(Errors.UndefinedObject("i"));
 		build_method_expr_success_test
-			(CustomType "A")
+			("A")
 			(* class A { } class B { A testM() {new A} } *)
 			[mk_class "A" [];
 			 mk_class "B" [mk_method_e "A" "testM" [] (Instance(mk_none (Classname(mk_none "A"))))]];
 
 		(*** Test arguments of methods ***)
 		build_method_expr_success_test
-			IntType
+			"Int"
 			(* class A { Int i; Int testM(Int a) {i+a} } *)
 			[mk_class "A" [mk_attr "Int" "i"; mk_method_e "Int" "testM" [mk_param_n "Int" "a"] 
 				(Binop(mk_none Badd, mk_none (Var(mk_none "i")), mk_none (Var(mk_none "a"))))]];
@@ -554,103 +554,106 @@ let test_method_expr _ =
 
 let test_cast _ = 
 	build_success_test
-		(CustomType "A")
+		("A")
 		(* class A {} class B extends A {} *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
-		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
-		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
+		[{n="b"; t="B"; attr=false; static=false;}]
 		(* (A)b *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))));
 	build_success_test
-		(CustomType "B")
+		("B")
 		(* class A {} class B extends A {} *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
-		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]}]
-		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
+		[{n="a"; t="A"; attr=false; static=false;}]
 		(* (B)a *)
 		(Cast(mk_none (Classname (mk_none "B")), mk_none (Var (mk_none "a"))));
 	build_success_test
-		(CustomType "A")
+		("A")
 		(* class A {} class B {} *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
-		 {name="B"; parent=ObjectType; attributes=[]; methods=[]}]
-		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "Object"; attributes=[]; methods=[]}]
+		[{n="b"; t="B"; attr=false; static=false;}]
 		(* (A)b ; definitly not legal, but we don't check it here *) 
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))));
 	build_success_test
-		(CustomType "A")
+		("A")
 		(* class A {} class B extends A {} class C extends B *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
-		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
-		 {name="C"; parent=CustomType "B"; attributes=[]; methods=[]}]
-		[{n="c"; t=CustomType "C"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]};
+		 {name="C"; parent=Some "B"; attributes=[]; methods=[]}]
+		[{n="c"; t="C"; attr=false; static=false;}]
 		(* (A)c <= up casting, always legal *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "c"))));
 	build_success_test
-		(CustomType "C")
+		("C")
 		(* class A {} class B extends A {} class C extends B *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
-		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
-		 {name="C"; parent=CustomType "B"; attributes=[]; methods=[]}]
-		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]};
+		 {name="C"; parent=Some "B"; attributes=[]; methods=[]}]
+		[{n="a"; t="A"; attr=false; static=false;}]
 		(* (C)a <= down casting, not always legal *)
 		(Cast(mk_none (Classname (mk_none "C")), mk_none (Var (mk_none "a"))));
 	build_success_test
-		(CustomType "C")
+		("C")
 		(* class A {} class B extends A {} class C extends A *)
-		[{name="A"; parent=ObjectType; attributes=[]; methods=[]}; 
-		 {name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
-		 {name="C"; parent=CustomType "A"; attributes=[]; methods=[]}]
-		[{n="b"; t=CustomType "B"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]};
+		 {name="C"; parent=Some "A"; attributes=[]; methods=[]}]
+		[{n="b"; t="B"; attr=false; static=false;}]
 		(* (C)((A)b) <= down casting, not legal but not detectable at this point *)
 		(Cast(mk_none (Classname (mk_none "C")), mk_none (
 			Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))));
 	build_success_test
-		(IntType)
+		("Int")
 		(* class A extends Int {} *)
-		[{name="A"; parent=IntType; attributes=[]; methods=[]}]
-		[{n="a"; t=CustomType "A"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Int"; attributes=[]; methods=[]}]
+		[{n="a"; t="A"; attr=false; static=false;}]
 		(* (Int)a *)
 		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Var (mk_none "a"))));
 	build_success_test
-		(CustomType "A")
+		("A")
 		(* class A extends Int {} *)
-		[{name="A"; parent=IntType; attributes=[]; methods=[]}]
-		[{n="i"; t=CustomType "Int"; attr=false; static=false;}]
+		[{name="A"; parent=Some "Int"; attributes=[]; methods=[]}]
+		[{n="i"; t="Int"; attr=false; static=false;}]
 		(* (A)i *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "i"))))
 
 let test_is_parent_function _ =
-	assert_equal true (is_parent [] ObjectType IntType);
-	assert_equal false (is_parent [] IntType ObjectType);
+	assert_equal true (is_parent [] (Some "Object") (Some "Int"));
+	assert_equal false (is_parent [] (Some "Int") (Some "Object"));
 	(* class A extends Int {} *)
-	assert_equal true (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]}] 
-		IntType (CustomType "A"));
+	assert_equal true (is_parent [{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
+		(Some "Int") (Some  "A"));
 	(* class A extends Int {} *)
-	assert_equal true (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]}] 
-		ObjectType (CustomType "A"));
+	assert_equal true (is_parent [{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
+		(Some "Object") (Some "A"));
 	(* class A extends Int {} *)
-	assert_equal false (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]}] 
-		StringType (CustomType "A"));
+	assert_equal false (is_parent [{name="Int";parent=Some "Object";attributes=[];methods=[]};
+		{name="String";parent=Some "Object";attributes=[];methods=[]};
+		{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
+		(Some "String") (Some "A"));
 	(* class A {} class B extends A {} *)
-	assert_equal true (is_parent [{name="A"; parent=ObjectType; attributes=[]; methods=[]};
-		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]}] 
-		(CustomType "A") (CustomType "B"));
+	assert_equal true (is_parent [{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
+		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] 
+		(Some "A") (Some "B"));
 	(* class A {} class B extends A {} *)
-	assert_equal false (is_parent [{name="A"; parent=ObjectType; attributes=[]; methods=[]};
-		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]}] 
-		(CustomType "B") (CustomType "A"));
+	assert_equal false (is_parent [{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
+		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] 
+		(Some "B") (Some "A"));
 	(* class A {} class B extends A {} class C extends B {} *)
-	assert_equal true (is_parent [{name="A"; parent=ObjectType; attributes=[]; methods=[]};
-		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]};
-		{name="C"; parent=CustomType "B"; attributes=[]; methods=[]}] 
-		(CustomType "A") (CustomType "C"));
+	assert_equal true (is_parent [{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
+		{name="B"; parent=Some "A"; attributes=[]; methods=[]};
+		{name="C"; parent=Some "B"; attributes=[]; methods=[]}] 
+		(Some "A") (Some "C"));
 	(* class A extends Int {} class B {} *)
-	assert_equal false (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]};
-		{name="B"; parent=ObjectType; attributes=[]; methods=[]}] 
-		(IntType) (CustomType "B"));
-	assert_equal false (is_parent [{name="A"; parent=IntType; attributes=[]; methods=[]};
-		{name="B"; parent=CustomType "A"; attributes=[]; methods=[]}] (CustomType "B") (CustomType "A"))
+	assert_equal false (is_parent [{name="A"; parent=Some "Int"; attributes=[]; methods=[]};
+		{name="B"; parent=Some "Object"; attributes=[]; methods=[]}] 
+		(Some "Int") (Some "B"));
+	assert_equal false (is_parent [{name="Int";parent=Some "Object";attributes=[];methods=[]};
+		{name="A"; parent=Some "Int"; attributes=[]; methods=[]};
+		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] (Some "B") (Some "A"))
 
 
 (*************************************************************************************)

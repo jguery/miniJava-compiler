@@ -1,15 +1,8 @@
 open Structure
 
-type exprType = 
-	| ObjectType	(* For classes with no parent *)
-	| IntType
-	| BooleanType
-	| StringType
-	| CustomType of string
-
 type varType = {
 	n : string;
-	t : exprType;
+	t : string;
 	attr : bool;
 	static : bool;
 }
@@ -17,15 +10,15 @@ type varType = {
 (* Do we need location info ? Don't add it for now *)
 type methodType = {
 	name : string;
-	mutable return : exprType;
+	mutable return : string;
 	static : bool;
-	mutable cl : exprType; (* Class the method belongs to. Can change in case of redefinition *)
-	params : exprType list;
+	mutable cl : string; (* Class the method belongs to. Can change in case of redefinition *)
+	params : string list;
 }
 
 type classTypeEnv = {
 	name : string;
-	mutable parent: exprType;
+	mutable parent: string option;		(* None is ONLY for the Object class *)
 	mutable methods : methodType list;
 	mutable attributes : varType list;
 }
@@ -46,35 +39,35 @@ let rec copy_methods_types_list = function
 type typed_expr = 
   | TypedNull
   | TypedThis
-  | TypedInt of int Located.t * exprType
-  | TypedBoolean of bool Located.t * exprType
-  | TypedString of string Located.t * exprType
-  | TypedVar of string Located.t * exprType
-  | TypedAttrAffect of string Located.t * typed_expr Located.t * exprType
-  | TypedUnop of unop Located.t * typed_expr Located.t * exprType
-  | TypedBinop of binop Located.t * typed_expr Located.t * typed_expr Located.t * exprType
+  | TypedInt of int Located.t * string
+  | TypedBoolean of bool Located.t * string
+  | TypedString of string Located.t * string
+  | TypedVar of string Located.t * string
+  | TypedAttrAffect of string Located.t * typed_expr Located.t * string
+  | TypedUnop of unop Located.t * typed_expr Located.t * string
+  | TypedBinop of binop Located.t * typed_expr Located.t * typed_expr Located.t * string
   | TypedLocal of classname Located.t * string Located.t * typed_expr Located.t * typed_expr Located.t 
-  	* exprType
-  | TypedCondition of typed_expr Located.t * typed_expr Located.t * typed_expr Located.t * exprType
-  | TypedMethodCall of typed_expr Located.t * string Located.t * typed_expr Located.t list * exprType
-  | TypedStaticMethodCall of classname Located.t * string Located.t * typed_expr Located.t list * exprType
+  	* string
+  | TypedCondition of typed_expr Located.t * typed_expr Located.t * typed_expr Located.t * string
+  | TypedMethodCall of typed_expr Located.t * string Located.t * typed_expr Located.t list * string
+  | TypedStaticMethodCall of classname Located.t * string Located.t * typed_expr Located.t list * string
     (* Static method calls are only applied ot classnames *)
-  | TypedInstance of classname Located.t * exprType
-  | TypedCast of classname Located.t * typed_expr Located.t * exprType
-  | TypedInstanceof of typed_expr Located.t * classname Located.t * exprType
+  | TypedInstance of classname Located.t * string
+  | TypedCast of classname Located.t * typed_expr Located.t * string
+  | TypedInstanceof of typed_expr Located.t * classname Located.t * string
 
 type typed_param = 
-  | TypedParam of classname Located.t * string Located.t * exprType
+  | TypedParam of classname Located.t * string Located.t * string
 
 type typed_attr_or_method = 
-  | TypedAttr of classname Located.t * string Located.t * exprType
-  | TypedAttrWithValue of classname Located.t * string Located.t * typed_expr Located.t * exprType
+  | TypedAttr of classname Located.t * string Located.t * string
+  | TypedAttrWithValue of classname Located.t * string Located.t * typed_expr Located.t * string
   | TypedMethod of classname Located.t * string Located.t * typed_param Located.t list * typed_expr Located.t 
-  	* exprType
-  | TypedStaticAttr of classname Located.t * string Located.t * exprType
-  | TypedStaticAttrWithValue of classname Located.t * string Located.t * typed_expr Located.t * exprType
+  	* string
+  | TypedStaticAttr of classname Located.t * string Located.t * string
+  | TypedStaticAttrWithValue of classname Located.t * string Located.t * typed_expr Located.t * string
   | TypedStaticMethod of classname Located.t * string Located.t * typed_param Located.t list 
-  	* typed_expr Located.t * exprType
+  	* typed_expr Located.t * string
 
 type typed_class_or_expr = 
   | TypedClassdef of string Located.t * typed_attr_or_method Located.t list
@@ -82,12 +75,8 @@ type typed_class_or_expr =
   | TypedExpr of typed_expr Located.t
 
 
-let string_of_expr_type = function
-	| ObjectType -> "Object"
-	| IntType -> "Int"
-	| BooleanType -> "Boolean"
-	| StringType -> "String"
-	| CustomType s -> s
+let string_of_expr_type t =
+	t
 
 let rec string_of_expr_types = function
 	| [] -> ""

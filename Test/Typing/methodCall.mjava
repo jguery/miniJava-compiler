@@ -12,12 +12,6 @@ class C {
 	B m(Int i) {
 		new B
 	}
-	// Redefinition of a method inside of a class doesn't raise an error,
-	// it just erases the former method (which was really useless, but it
-	// does no harm)
-	C m(Int i) {
-		new C
-	}
 	Int m2(Boolean b, String s) {
 		1
 	}

@@ -49,16 +49,16 @@ let mk_class_p classname parent methods =
 
 let rec string_of_attributes_env = function
 	| [] -> ""
-	| t::q -> "name: " ^ t.n ^ " type: " ^ (string_of_expr_type t.t) ^ "; " 
+	| t::q -> "name: " ^ t.n ^ " type: " ^ t.t ^ "; " 
 		^ (string_of_attributes_env q)
 
 let rec string_of_methods_env = function
 	| [] -> ""
-	| t::q -> t.cl;"Name " ^ t.name ^ " class " ^ (string_of_expr_type t.cl) 
+	| t::q -> t.cl;"Name " ^ t.name ^ " class " ^ t.cl
 		^ " params [" ^ (string_of_expr_types t.params) ^ "]; " ^ (string_of_methods_env q) 
 
 let rec string_of_env = function
 	| [] -> ""
-	| t::q -> "Class " ^ t.name ^ " parent " ^ (string_of_expr_type t.parent) 
+	| t::q -> "Class " ^ t.name ^ " parent " ^ (Option.get t.parent) 
 		^ " attributes : [" ^ (string_of_attributes_env t.attributes)
 		^ "] methods : [" ^ (string_of_methods_env t.methods) ^ "]\n" ^ (string_of_env q)
