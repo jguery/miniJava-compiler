@@ -119,11 +119,15 @@ let rec type_expr classesEnv varEnv expr =
 	and type_cast c e =
 		let type_to = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
 		and ne = type_expr classesEnv varEnv (Located.elem_of e)
+		in let tne = type_of_expr ne
 		in 
 		(* Because it is impossible to know at that stage if casting is legal 
 			(because of down casting with parents being one of the basic types),
 		 	every cast is authorized here. *)
-		TypedCast(c, Located.mk_elem ne (Located.loc_of e), type_to)
+		if (is_parent classesEnv (Some type_to) (Some tne) || is_parent classesEnv (Some tne) (Some type_to)) then 
+			TypedCast(c, Located.mk_elem ne (Located.loc_of e), type_to)
+		else 
+			raise (PError(IllegalCast(tne, type_to), Located.loc_of e))
 
 	in match expr with
   	| Null -> TypedNull

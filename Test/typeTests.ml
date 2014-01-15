@@ -569,14 +569,14 @@ let test_cast _ =
 		[{n="a"; t="A"; attr=false; static=false;}]
 		(* (B)a *)
 		(Cast(mk_none (Classname (mk_none "B")), mk_none (Var (mk_none "a"))));
-	build_success_test
-		("A")
+	build_failure_test
 		(* class A {} class B {} *)
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "Object"; attributes=[]; methods=[]}]
 		[{n="b"; t="B"; attr=false; static=false;}]
-		(* (A)b ; definitly not legal, but we don't check it here *) 
-		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))));
+		(* (A)b ; definitly not legal! *) 
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))
+		(Errors.IllegalCast("B", "A"));
 	build_success_test
 		("A")
 		(* class A {} class B extends A {} class C extends B *)
