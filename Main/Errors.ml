@@ -7,6 +7,7 @@ type error =
 	| UndefinedMethod of string * string * string list
 	| UndefinedObject of string
 	| IllegalCast of string * string
+	| NamingError of string
 
 exception PError of error * Location.t
 
@@ -24,3 +25,4 @@ let string_of_error e =
 		^ (string_of_args args) ^ ") of type " ^ t ^ " is undefined"
 	| UndefinedObject s -> "Definition error: object " ^ s ^ " is undefined"
 	| IllegalCast(set, nt) -> "Casting error: Cannot cast expression of type " ^ set ^ " to type " ^ nt
+	| NamingError n -> "Object " ^ n ^ " is already defined"

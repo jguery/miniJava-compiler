@@ -53,70 +53,96 @@ let rec build_params_env currentClassEnv p =
 	| [] -> []
 	| t::q -> (build_param_env (Located.elem_of t))::(build_params_env currentClassEnv q)
 
+
 (* This function receives a non-located method and the method environment. 
 It returns this environment updated with the new method. *)
 let add_method_to_env currentClassEnv methodsEnv classname m = 
-	(* TODO: error if redefinition of a method of the current class 
-	(defined twice) ? Or not, juste overwrite... *)
-	let rec check_env = function 
+
+	(* This inner function checks if a redefinition is taking place, and if it is legal. 
+	If so, redefines and returns true. Otherwise returns false. *)
+	let check_redefinition r n p methodType = 
+		methodType.cl; (* Hack *)
+		if ((Located.elem_of n) = methodType.name && (build_params_env currentClassEnv p) = methodType.params) then begin
+			match methodType.cl with 
+				(* Trying to redefine an method already defined in the SAME class... *)
+			| CustomType s when s = classname -> raise (PError(Errors.NamingError(Located.elem_of n), Located.loc_of n))
+				(* Trying to redefine a method from a parent (s can't be anything else than the parent here) *)
+			| CustomType s when s <> classname -> 
+					(* TODO: check return type is a parent, but can't make it in the same pass..... SHIT *)
+
+					methodType.cl <- CustomType classname;
+					methodType.return <- type_of_classname currentClassEnv (Located.elem_of r);
+					true
+			| _ -> false	(* This is in case we later define methods for basic types... *)
+		end else
+			false
+
+	(* We check the methods environment and see if a method of the same signature doesn't already exists. *)
+	in let rec check_env = function 
 		(* Method doesn't already exist in the methodsEnv, we add it *)
-		| [] -> (match m with 
-				| Method(r, n, p, _) -> {name = Located.elem_of n; 
+		| [] -> 
+			let build_method r n p static = 
+				{	
+					name = Located.elem_of n; 
 					return = type_of_classname currentClassEnv (Located.elem_of r); 
-					static = false;
+					static = static;
 					cl = CustomType classname;
-					params = (build_params_env currentClassEnv p)}::methodsEnv
-				| StaticMethod(r, n, p, _) -> {name = Located.elem_of n; 
-					return = type_of_classname currentClassEnv (Located.elem_of r); 
-					static = true;
-					cl = CustomType classname;
-					params = (build_params_env currentClassEnv p)}::methodsEnv
+					params = (build_params_env currentClassEnv p)
+				}
+			in (match m with 
+				| Method(r, n, p, _) -> (build_method r n p false)::methodsEnv
+				| StaticMethod(r, n, p, _) -> (build_method r n p true)::methodsEnv
 			)
 		(* Method already exists in the methodsEnv, we redefine it 
 			(sort of in some cases, covered by tests) *)
 		| t::q -> t.cl; (* Hack to make sure t is recognized as a methodType *)
 			(match m with
-				| Method(r, n, p, _) when ((Located.elem_of n) = t.name 
-					&& (build_params_env currentClassEnv p) = t.params) -> 
-					(* Redefinition of a method *)
-					(t.cl <- CustomType classname;
-					t.return <- type_of_classname currentClassEnv (Located.elem_of r);
-					methodsEnv;)
-				| StaticMethod(r, n, p, _) when ((Located.elem_of n) = t.name 
-					&& (build_params_env currentClassEnv p) = t.params) -> 
-					(* Redefinition of a method *)
-					(t.cl <- CustomType classname;
-					t.return <- type_of_classname currentClassEnv (Located.elem_of r);
-					methodsEnv;)
+				| Method(r, n, p, _) -> if (check_redefinition r n p t) then methodsEnv else check_env q
 				| _ -> check_env q
 			)
 	in check_env methodsEnv 
 
 (* This function builds the methods definition environment of a class. 
-The param is a located list of attr_or_methods *)
+The param is a located list of attr_or_methods. Classname is here the name-string 
+of the class the method or attr belongs to *)
 (* It returns a list of methodType *)
 let rec build_methods_and_attrs_env currentClassEnv methodsEnv attrsEnv classname elems = 
-	match elems with 
-	| [] -> List.rev methodsEnv, List.rev attrsEnv (* Reverse to retrieve the order of definition *)
+	let rec add_attr_to_env env c n static = 
+		match env with 
+		| [] -> {n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
+					attr=true; static=static;}::attrsEnv
+		| t::q when t.n = (Located.elem_of n) -> raise (PError(Errors.NamingError(t.n), Located.loc_of n))
+		| t::q -> add_attr_to_env q c n static
+
+	in match elems with 
+		(* Reverse to retrieve the order of definition *)
+	| [] -> List.rev methodsEnv, List.rev attrsEnv 
 	| t::q -> (match (Located.elem_of t) with 
 				(* The item is a method, we check its environment *)
 			| Method _ | StaticMethod _ -> 
 				build_methods_and_attrs_env currentClassEnv 
 					(add_method_to_env currentClassEnv methodsEnv classname (Located.elem_of t)) 
 					attrsEnv classname q
-			| Attr(c, n) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
-								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
-									attr=true; static=false;}::attrsEnv) classname q
-			| AttrWithValue(c, n, _) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
-								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
-									attr=true; static=false;}::attrsEnv) classname q
-			| StaticAttr(c, n) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
-								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
-									attr=true; static=true;}::attrsEnv) classname q
-			| StaticAttrWithValue(c, n, _) -> build_methods_and_attrs_env currentClassEnv methodsEnv 
-								({n=Located.elem_of n; t=type_of_classname currentClassEnv (Located.elem_of c); 
-									attr=true; static=true;}::attrsEnv) classname q
+
+			| Attr(c, n) | AttrWithValue(c, n, _) -> 
+				build_methods_and_attrs_env currentClassEnv methodsEnv (add_attr_to_env attrsEnv c n false) classname q
+
+			| StaticAttr(c, n) | StaticAttrWithValue(c, n, _) -> 
+				build_methods_and_attrs_env currentClassEnv methodsEnv (add_attr_to_env attrsEnv c n true) classname q
 		)	 
+
+let rec build_shallow_types shallowClassesEnv tree = 
+	let rec check_type_name n envToLookUp = match envToLookUp with
+		| [] -> Located.elem_of n
+			(* Class already exists *)
+		| t::q when t.name = Located.elem_of n -> raise (PError(NamingError(Located.elem_of n), Located.loc_of n))
+		| t::q -> check_type_name n q
+	in match tree with
+	| [] -> []
+	| t::q -> (match Located.elem_of t with 
+			| Classdef (n, _) | ClassdefWithParent (n, _, _) -> build_shallow_types shallowClassesEnv q
+			| _ -> build_shallow_types shallowClassesEnv q
+		)
 
 (* This function builds the classes definition environment of the located structured tree in param *)
 (* It returns a list of classTypeEnv *)

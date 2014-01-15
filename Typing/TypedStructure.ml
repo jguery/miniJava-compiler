@@ -25,9 +25,9 @@ type methodType = {
 
 type classTypeEnv = {
 	name : string;
-	parent: exprType;
-	methods : methodType list;
-	attributes : varType list;
+	mutable parent: exprType;
+	mutable methods : methodType list;
+	mutable attributes : varType list;
 }
 
 (* Copy a list of methodType structures *)

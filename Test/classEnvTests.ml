@@ -20,19 +20,18 @@ let build_success_test expEnv structureTree =
 	print_endline "========================================";	
 	assert_equal expEnv env
 
-let build_failure_test structureTree undefinedType =
+let build_failure_test structureTree err =
 	let test _ = 
 		try 
-			print_endline (string_of_structure_tree structureTree);
+			print_endline ((string_of_structure_tree structureTree) ^ " => " 
+				^ (string_of_error err));
 			print_endline "========================================";
 			ClassesEnv.build_classes_env structureTree
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)
 	in
-	assert_raises 
-		(TestError (Errors.UndefinedType(undefinedType))) 
-		test
+	assert_raises (TestError err) test
 
 
 (*************************************************************************************)
@@ -145,7 +144,7 @@ let test_class_with_parent _ =
 	(* Class A isn't defined *)
 	build_failure_test
 		[mk_class_p "B" "A" []]
-		"A";
+		(UndefinedType "A");
 
 	(* Two classes with one being the parent of the other and methods are involved!*)
 	build_success_test
@@ -358,6 +357,33 @@ let test_static_methods _ =
 		[mk_class "A" [mk_smethod "Boolean" "m" [mk_param "Int"]];
 		 mk_class_p "B" "A" [mk_smethod "Boolean" "m" [mk_param "Int"]]]
 
+let test_naming_conflicts _ = 
+	(* Naming conflicts with attributes. *)
+	build_failure_test
+		(* class A {Int i; String i;} *)
+		[mk_class "A" [mk_attr "Int" "i"; mk_attr "String" "i"]]
+		(Errors.NamingError("i"));
+	build_failure_test
+		(* class A {static Int i; String i;} *)
+		[mk_class "A" [mk_sattr "Int" "i"; mk_attr "String" "i"]]
+		(Errors.NamingError("i"));
+	build_failure_test
+		(* class A {Int i; static String i;} *)
+		[mk_class "A" [mk_attr "Int" "i"; mk_sattr "String" "i"]]
+		(Errors.NamingError("i"));
+	build_failure_test
+		(* class A {Int i; } class B extends A {Boolean i;} *)
+		[mk_class "A" [mk_attr "Int" "i"]; 
+		 mk_class_p "B" "A" [mk_attr "Boolean" "i"]]
+		(Errors.NamingError("i"));
+
+	build_failure_test
+		[mk_class "A" [mk_method "Int" "m" []; mk_method "Boolean" "m" [];]]
+		(Errors.NamingError("m"))
+
+	(* Naming conflicts with methods. *)
+	
+
 (*************************************************************************************)
 (*********************************** Test suite **************************************)
 
@@ -373,6 +399,8 @@ let suite =
 		 "attributes">:: test_attributes;
 
 		 "staticMethods">:: test_static_methods;
+
+		 "namingConflicts">:: test_naming_conflicts;
 		]
 
 let () =
