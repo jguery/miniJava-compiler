@@ -13,24 +13,31 @@ exception TestError of Errors.error
 (*************************************************************************************)
 (***************************** Utils for building tests ******************************)
 
-let build_success_test expType classEnv varEnv expr =
+let build_success_test_w_params expType classEnv varEnv class_str static_m expr =
 	print_endline ((Structure.string_of_expr expr) ^ " => " ^ (TypedStructure.string_of_expr_type expType));
 	print_endline "========================================";
-	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr None (ClassesEnv.static_classes_env@classEnv) varEnv 
+	assert_equal expType (TypedStructure.type_of_expr (Typer.type_expr class_str static_m 
+		(ClassesEnv.static_classes_env@classEnv) varEnv 
 		(mk_none expr)))
 
-let build_failure_test classEnv varEnv expr err =
+let build_success_test expType classEnv varEnv expr =
+	build_success_test_w_params expType classEnv varEnv None false expr
+
+let build_failure_test_w_params classEnv varEnv class_str static_m expr err =
 	let test _ = 
 		try 
 			print_endline ((Structure.string_of_expr expr) ^ " => " 
 				^ (Errors.string_of_error err));
 			print_endline "========================================";
-			Typer.type_expr None (ClassesEnv.static_classes_env@classEnv) varEnv (mk_none expr)
+			Typer.type_expr class_str static_m (ClassesEnv.static_classes_env@classEnv) varEnv (mk_none expr)
 		with Errors.PError (e, l) ->
 			(* Strip the location information *)
 			raise (TestError e)
 	in
 	assert_raises (TestError err) test
+
+let build_failure_test classEnv varEnv expr err =
+	build_failure_test_w_params classEnv varEnv None false expr err
 
 (* This test-builder evaluates the expression of the method called testM 
 in the last class of the structure tree *)
@@ -656,15 +663,24 @@ let test_is_parent_function _ =
 		{name="A"; parent=Some "Int"; attributes=[]; methods=[]};
 		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] (Some "B") (Some "A"))
 
-
 let test_this _ = 
 	build_failure_test
 		[] []
 		(This)
 		(* Since, by default, we are not in a class. *)
+		(Errors.UndefinedObject("this"));
+	build_success_test_w_params
+		("A")
+		[] []
+		(Some "A") false
+		(* This can be used inside a non-static method. *)
+		(This);
+	build_failure_test_w_params
+		[] []
+		(Some "A") true
+		(* This cannot be used in a static method. *)
+		(This)
 		(Errors.UndefinedObject("this"))
-
-		(* TODO go on with the tests *)
 
 (*************************************************************************************)
 (*********************************** Test suite **************************************)

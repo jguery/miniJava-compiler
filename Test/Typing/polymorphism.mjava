@@ -2,6 +2,7 @@ class A {
 	Int i;
 	Object m(Int i2) {
 		if (i==i2) {
+			this.m(i);
 			true
 		} else {
 			false
