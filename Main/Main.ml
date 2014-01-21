@@ -23,7 +23,7 @@ let compile str =
     Location.init lexbuf file;
     print_endline "opening file";
     print_endline ("====================");
-    Compile.execute lexbuf !verbose;
+    Execute.execute lexbuf !verbose;
     close_in (input_file)
   with Sys_error s ->
     print_endline ("Can't find file '" ^ file ^ "'")

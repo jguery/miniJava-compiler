@@ -1,0 +1,12 @@
+class A {
+	Int i;
+}
+class B {
+	
+}
+
+new A
+new B
+new B
+new A
+new B
