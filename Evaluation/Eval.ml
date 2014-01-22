@@ -167,6 +167,20 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			in match object_descriptor with
 			| ObjectDescriptor od -> Hashtbl.find od.attrs_values (Located.elem_of var_name)
 			| _ -> -1 (* TODO really can't happen ? *)
+
+	and eval_attr_affect attr_name e t =
+		(* Variable HAS to be an attribute, thanks to the typer. Thus, Option.get cannot throw an exception. *)
+		let object_descriptor = Hashtbl.find heap (Option.get this_addr)
+		in match object_descriptor with
+		| ObjectDescriptor od ->
+			let new_attr_addr = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e
+			in 
+			(* We should replace the object in the heap with the new value of the attribute, 
+				but because of how eval_expr works, it is easier to just move the address of 
+				the value of the attribute. Not so memory efficient... *)
+			Hashtbl.replace od.attrs_values (Located.elem_of attr_name) new_attr_addr;
+			new_attr_addr
+		| _ -> -1 (* TODO really can't happen ? *)
  
 	in match Located.elem_of expr with
 	| TypedNull -> -1 (* -1 is the address of null *)
@@ -179,8 +193,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedBinop (b, e1, e2, t) -> eval_binop b e1 e2 t
 	| TypedMethodCall (caller, m_name, args, t) -> eval_method_call caller m_name args t
 	| TypedVar (var_name, t) -> eval_var_call var_name t
-
-	  (* | TypedVar of string Located.t * string *)
+	| TypedAttrAffect (attr_name, e, t) -> eval_attr_affect attr_name e t
 
 
 let eval typed_tree classes_descriptor methods_table = 

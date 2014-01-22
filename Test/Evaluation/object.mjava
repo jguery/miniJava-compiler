@@ -15,7 +15,7 @@ class B {
 class C {
 	Int i;
 	C init() {
-		i=2; this
+		i=4; this
 	}
 	Int m() {
 		i+1 // Operation on null, should raise an error from evaluator
