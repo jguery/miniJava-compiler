@@ -40,7 +40,7 @@ let build_class_descriptor methods_table name parent l_attrs_methods =
 	})
 
 
-let compile typed_tree = 
+let compile classesEnv typed_tree = 
 	let classes_descriptors = Hashtbl.create 10
 	and methods_table = Hashtbl.create 30
 	in build_basic_classes_descriptors classes_descriptors;

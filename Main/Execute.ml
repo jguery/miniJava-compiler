@@ -8,8 +8,8 @@ let execute lexbuf verbose =
   try
   	(* Build the data structure *)
     let l = Parser.structure_tree nexttoken lexbuf in
-    let t_l = Typer.type_structure_tree l in
-    let classes_descriptor = Compile.compile t_l in
+    let classesEnv, t_l = Typer.type_structure_tree l in
+    let classes_descriptor = Compile.compile classesEnv t_l in
     let evaluation = Eval.eval t_l classes_descriptor in
     	(*if verbose then begin
 	    	print_structure_tree l;

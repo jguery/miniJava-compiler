@@ -225,4 +225,4 @@ let type_structure_tree tree =
 		| t::q -> (Located.mk_elem (type_structure (Located.elem_of t)) (Located.loc_of t))
 								::(type_rec_structure_tree q)
 	in 
-	type_rec_structure_tree tree 
+	classesEnv, type_rec_structure_tree tree 
