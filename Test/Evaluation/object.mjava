@@ -1,5 +1,5 @@
 class A {
-	Int i;
+	Int i=1;
 }
 class B {
 	
@@ -7,6 +7,5 @@ class B {
 
 new A
 new B
-new B
-new A
-new B
+2+3
+true
