@@ -47,6 +47,14 @@ let type_from_object_descriptor = function
 	| BooleanDescriptor _ -> "Boolean"
 	| StringDescriptor _ -> "String"
 
+(* Search an address in the heap. The address must lead to a valid object, otherwise we throw an exception. *)
+(* Note that sometimes it is OK to have a null object. One should use this function when it is not. *)
+let search_heap heap addr loc =
+	if addr = -1 then
+		raise (Errors.PError(NullError, loc))
+	else
+		Hashtbl.find heap addr
+
 (* Evaluate an expression *)
 (* Heap is a hash table with keys being addresses (mere integers) and values are object descriptors *)
 (* Heap_size is the current size of the heap, to get the last free address in the hash table *)
@@ -82,8 +90,8 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		in match nb with
 		| Bsemicol -> addr_e2
 		| Badd | Bmul | Bdiv | Bsub | Bmod -> 
-			let e1_val = int_value (Hashtbl.find heap addr_e1)
-			and e2_val = int_value (Hashtbl.find heap addr_e2)
+			let e1_val = int_value (search_heap heap addr_e1 (Located.loc_of e1))
+			and e2_val = int_value (search_heap heap addr_e2 (Located.loc_of e2))
 			in let res = match nb with
 				| Badd -> e1_val + e2_val
 				| Bmul -> e1_val * e2_val
@@ -93,20 +101,20 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			in add_to_heap heap heap_size (IntDescriptor (Some res))
 
 		| Band | Bor ->
-			let e1_val = bool_value (Hashtbl.find heap addr_e1)
-			and e2_val = bool_value (Hashtbl.find heap addr_e2)
+			let e1_val = bool_value (search_heap heap addr_e1 (Located.loc_of e1))
+			and e2_val = bool_value (search_heap heap addr_e2 (Located.loc_of e2))
 			in let res = match nb with
 				| Band -> e1_val && e2_val
 				| Bor -> e1_val || e2_val
 			in add_to_heap heap heap_size (BooleanDescriptor (Some res))
 
 		| Binf | Binfeq | Bsup | Bsupeq ->
-			let e1_val = int_value (Hashtbl.find heap addr_e1)
-			and e2_val = int_value (Hashtbl.find heap addr_e2)
+			let e1_val = int_value (search_heap heap addr_e1 (Located.loc_of e1))
+			and e2_val = int_value (search_heap heap addr_e2 (Located.loc_of e2))
 			in add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb e1_val e2_val)))
 
 		| Bdiff | Beq -> (
-			match Hashtbl.find heap addr_e1, Hashtbl.find heap addr_e2 with
+			match search_heap heap addr_e1 (Located.loc_of e1), search_heap heap addr_e2 (Located.loc_of e2) with
 				| IntDescriptor i, IntDescriptor j -> 
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb i j)))
 				| BooleanDescriptor b, BooleanDescriptor d -> 
@@ -121,7 +129,8 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	and eval_method_call caller m_name args t =
 
 		let addr_caller = eval_expr heap heap_size stack classes_descriptor methods_table this_addr caller
-		in let type_caller = type_from_object_descriptor (Hashtbl.find heap addr_caller)
+			(* Caller can't be null *)
+		in let type_caller = type_from_object_descriptor (search_heap heap addr_caller (Located.loc_of caller))
 		in let class_des = Hashtbl.find classes_descriptor type_caller
 		in let args_types = TypedStructure.types_of_expressions args
 		in let short_id_m = build_short_method_identifier (Located.elem_of m_name) args_types
@@ -148,12 +157,16 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		| _ -> -1 (* TODO what if we call a method from a basic type ?? *)
 
 	and eval_var_call var_name t =
-		(* Look for the variable in the attributes of "this", and then in the stack *)
+		(* Look for the variable in the stack, and then in the attributes of "this" *)
 		(* The variable MUST exist in one of those places, otherwise the typer would have raised an exception earlier *)
-		(* TODO look into the attributes of this *)
-		let search_stack () = 
+		try
 			Hashtbl.find stack (Located.elem_of var_name)
-		in search_stack ()
+		with Not_found ->
+			(* Variable HAS to be an attribute, thanks to the typer. Thus, Option.get cannot throw an exception. *)
+			let object_descriptor = Hashtbl.find heap (Option.get this_addr)
+			in match object_descriptor with
+			| ObjectDescriptor od -> Hashtbl.find od.attrs_values (Located.elem_of var_name)
+			| _ -> -1 (* TODO really can't happen ? *)
  
 	in match Located.elem_of expr with
 	| TypedNull -> -1 (* -1 is the address of null *)

@@ -1,11 +1,25 @@
 class A {
 	Int j=1;
-	B m(Int i) {
-		new B
+	Boolean m(Int i) {
+		(new B).m(i-j)
+	}
+	Int m2(Int i) {
+		i+j
 	}
 }
 class B {
-	
+	Boolean m(Int i) {
+		i>0
+	}
+}
+class C {
+	Int i;
+	C init() {
+		i=2; this
+	}
+	Int m() {
+		i+1 // Operation on null, should raise an error from evaluator
+	}
 }
 
 new A
@@ -17,6 +31,8 @@ new A != new A
 false != true
 1 == (1+1-1)
 2*4+3;3
-(new A).m(3)
+(new A).m(1)
+(new A).m2(1)
+((new C).init()).m()
 
 // Why the hell are the expressions considered in reverse order ??

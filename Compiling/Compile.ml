@@ -43,7 +43,6 @@ let rec build_class_descriptor methods_table name parent l_attrs_methods =
 		methods = methods
 	})
 
-
 let compile typed_tree = 
 	let classes_descriptors = Hashtbl.create 10
 	and methods_table = Hashtbl.create 30

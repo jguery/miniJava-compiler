@@ -8,6 +8,7 @@ type error =
 	| UndefinedObject of string
 	| IllegalCast of string * string
 	| NamingError of string
+	| NullError
 
 exception PError of error * Location.t
 
@@ -20,9 +21,10 @@ let string_of_error e =
 	| SyntaxError -> "Syntax error"
 	| TypeError(exp, real) -> "Type error: This expression has type " ^ real 
 		^ ", but an expression was expected of type " ^ exp
-	| UndefinedType t -> "Definition error: type " ^ t ^ " is undefined"
-	| UndefinedMethod (t, m, args) -> "Definition error: method " ^ m ^ "(" 
+	| UndefinedType t -> "Definition error: Type " ^ t ^ " is undefined"
+	| UndefinedMethod (t, m, args) -> "Definition error: Method " ^ m ^ "(" 
 		^ (string_of_args args) ^ ") of type " ^ t ^ " is undefined"
-	| UndefinedObject s -> "Definition error: object " ^ s ^ " is undefined"
+	| UndefinedObject s -> "Definition error: Object " ^ s ^ " is undefined"
 	| IllegalCast(set, nt) -> "Casting error: Cannot cast expression of type " ^ set ^ " to type " ^ nt
-	| NamingError n -> "Object " ^ n ^ " is already defined"
+	| NamingError n -> "Naming Error: Object " ^ n ^ " is already defined"
+	| NullError -> "Null Error: Object or expression is null" 
