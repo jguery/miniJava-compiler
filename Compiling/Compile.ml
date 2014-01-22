@@ -12,8 +12,9 @@ let build_basic_classes_descriptors classes_descriptors =
 	(* TODO in Typer, add attributes to class environment of basic types *)
 
 
-let build_class_descriptor name parent l_attrs_methods = 
+let build_class_descriptor methods_table name parent l_attrs_methods = 
 	let attrs = Hashtbl.create 5; (* TODO add attributes from parent class *)
+	and methods = []
 	in (match l_attrs_methods with
 	| [] -> ()
 	| h::q -> (match Located.elem_of h with
@@ -41,11 +42,13 @@ let build_class_descriptor name parent l_attrs_methods =
 
 let compile typed_tree = 
 	let classes_descriptors = Hashtbl.create 10
+	and methods_table = Hashtbl.create 30
 	in build_basic_classes_descriptors classes_descriptors;
 	let rec rec_compile = function
 		| [] -> classes_descriptors
 		| t::q -> (match Located.elem_of t with
-					| TypedClassdef (n, l) -> Hashtbl.add classes_descriptors (Located.elem_of n) (build_class_descriptor n None l); 
+					| TypedClassdef (n, l) -> Hashtbl.add classes_descriptors (Located.elem_of n) 
+							(build_class_descriptor methods_table n None l); 
 						rec_compile q
 					| TypedExpr e -> rec_compile q
 			)

@@ -10,7 +10,8 @@ open TypedStructure
 	methods: list of string keys from the methods hash table
 *)
 type advanced_class_descriptor = {
-	name: string;
+	name: string;	(* 	Name is redundant since a class descriptor is the value of a hash table, 
+						which keys are the names of the classes *)
 	size: int;
 	attributes: (string, typed_expr Located.t) Hashtbl.t;
 	methods: string list;
@@ -22,3 +23,8 @@ type class_descriptor =
 	| IntClass
 	| BooleanClass
 	| StringClass
+
+type method_descriptor = {
+	args_names: string list;
+	core: typed_expr;
+}

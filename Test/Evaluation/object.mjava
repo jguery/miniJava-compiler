@@ -9,3 +9,8 @@ new A
 new B
 2+3
 true
+2<3
+new A != new A
+false != true
+1 == (1+1-1)
+2*4+3;3
