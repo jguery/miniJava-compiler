@@ -1,5 +1,8 @@
 class A {
-	Int i=1;
+	Int j=1;
+	B m(Int i) {
+		new B
+	}
 }
 class B {
 	
@@ -14,3 +17,6 @@ new A != new A
 false != true
 1 == (1+1-1)
 2*4+3;3
+(new A).m(3)
+
+// Why the hell are the expressions considered in reverse order ??

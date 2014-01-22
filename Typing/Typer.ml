@@ -183,7 +183,7 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		in
 		check_type_is_legal classesEnv (Some return_type) (Some (type_of_expr ne)) (Located.loc_of e);
 		if (static) then TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
-			else TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
+			else TypedMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
 
 	and type_attr_with_value c s e static =
 		(* Don't use other attributes in the expression of an attribute *)
@@ -225,4 +225,4 @@ let type_structure_tree tree =
 		| t::q -> (Located.mk_elem (type_structure (Located.elem_of t)) (Located.loc_of t))
 								::(type_rec_structure_tree q)
 	in 
-	classesEnv, type_rec_structure_tree tree 
+	type_rec_structure_tree tree 

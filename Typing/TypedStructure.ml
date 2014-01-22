@@ -136,15 +136,36 @@ let check_type_is_legal classesEnv exp real loc =
 		make_type_error exp real loc
 
 
+(* This function builds a list of string types, based on a list of located typed params *)
+let rec params_types params = 
+	let param_type = function
+		| TypedParam (_, _, t) -> t
+	in match params with 
+	| [] -> []
+	| t::q -> (param_type (Located.elem_of t))::(params_types q)
+
+
+(* This function extracts the names of the params, which is a list of located typed params *)
+let rec params_names params = 
+	let param_name = function
+		| TypedParam (_, n, _) -> Located.elem_of n
+	in match params with
+	| [] -> []
+	| t::q -> (param_name (Located.elem_of t))::(params_names q)
+
 (**************************************************************************************************)
 (************************ These functions give the types of typed structures **********************)
 
-let rec type_of_expr = function
+let type_of_expr = function
 	| TypedInt(_, t) | TypedBoolean(_, t) | TypedString(_, t) | TypedVar(_, t)
 	| TypedAttrAffect(_, _, t) | TypedUnop(_, _, t) | TypedBinop(_, _, _, t) 
 	| TypedLocal(_, _, _, _, t) | TypedCondition(_, _, _, t) | TypedMethodCall(_, _, _, t) 
 	| TypedStaticMethodCall(_, _, _, t) | TypedInstance(_, t) | TypedCast(_, _, t) 
 	| TypedInstanceof(_, _, t) | TypedThis t -> t 
+
+let rec types_of_expressions = function
+	| [] -> []
+	| t::q -> (type_of_expr (Located.elem_of t))::(types_of_expressions q)
 
 let rec type_of_structure_tree tree = match tree with 
 	| [] -> []
