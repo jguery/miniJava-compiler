@@ -181,6 +181,14 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			Hashtbl.replace od.attrs_values (Located.elem_of attr_name) new_attr_addr;
 			new_attr_addr
 		| _ -> -1 (* TODO really can't happen ? *)
+
+	and eval_local apparent_type var_name var_expr sub_expr t =
+		(* The apparent type was really just used in the typer. We only care here about the real type. *)
+		let var_addr = eval_expr heap heap_size stack classes_descriptor methods_table this_addr var_expr
+		in let new_stack = Hashtbl.copy stack
+		in 
+		Hashtbl.add new_stack (Located.elem_of var_name) var_addr;
+		eval_expr heap heap_size new_stack classes_descriptor methods_table this_addr sub_expr
  
 	in match Located.elem_of expr with
 	| TypedNull -> -1 (* -1 is the address of null *)
@@ -194,12 +202,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedMethodCall (caller, m_name, args, t) -> eval_method_call caller m_name args t
 	| TypedVar (var_name, t) -> eval_var_call var_name t
 	| TypedAttrAffect (attr_name, e, t) -> eval_attr_affect attr_name e t
-	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) ->
-
-(* 	  | TypedLocal of classname Located.t * string Located.t * typed_expr Located.t * typed_expr Located.t 
-  	* string
- *)
-
+	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) -> eval_local apparent_type var_name var_expr sub_expr t
 
 let eval typed_tree classes_descriptor methods_table = 
 	let heap = Hashtbl.create heap_default_size

@@ -1,2 +1,9 @@
--10
-!1
+class A {
+	Int i;
+	Boolean j;
+	Int m() {
+		i
+	}
+}
+
+(new A).m()

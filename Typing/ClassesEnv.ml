@@ -61,88 +61,176 @@ let rec build_params_env currentClassesEnv p =
 	| [] -> []
 	| t::q -> (build_param_env (Located.elem_of t))::(build_params_env currentClassesEnv q)
 
+(* Check that the classes environment checks out. In particular, watches out for naming errors and redefinitions. *)
+let rec check_env currentClassesEnv =
+	let (table_done: (string, bool) Hashtbl.t) = Hashtbl.create (List.length currentClassesEnv)
 
-(* This function receives a non-located method and the method environment. 
-It returns this environment updated with the new method. *)
-let add_method_to_env currentClassesEnv methodsEnv classname m = 
+	in let rec init_table_done env = match env with
+		| [] -> ()
+		| t::q -> Hashtbl.add table_done t.name false; init_table_done q
 
-	(* This inner function checks if a redefinition is taking place, and if it is legal. 
-	If so, redefines and returns true. Otherwise returns false. *)
-	let check_redefinition r n p methodType = 
-		methodType.cl; (* Hack *)
-		if ((Located.elem_of n) = methodType.name && (build_params_env currentClassesEnv p) = methodType.params) then begin
-			match methodType.cl with 
-				(* Trying to redefine an method already defined in the SAME class... *)
-			| s when s = classname -> raise (PError(Errors.NamingError(Located.elem_of n), Located.loc_of n))
-				(* Trying to redefine a method from a parent (s can't be anything else than the parent here) *)
-			| s when s <> classname -> 
-					let new_return = type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r) 
-					in
+	in let rec check_attr_names (attrs: varType list) =
+		let rec _rec_check_current current_attr l =
+			match l with 
+			| [] -> ()
+			| t::q when t.n = current_attr.n -> raise (PError(NamingError(t.n), t.loc))
+			| t::q -> _rec_check_current current_attr q
+		in match attrs with
+		| [] -> ()
+		| t::q ->
+			_rec_check_current t q; 
+			check_attr_names q
+
+	in let rec check_methods_names (methods: methodType list) =
+		let rec _rec_check_current (current_method: methodType) (l:methodType list) =
+			match l with 
+			| [] -> ()
+			| t::q when t.name = current_method.name && t.params = current_method.params -> 
+				raise (PError(NamingError(t.name), t.loc))
+			| t::q -> _rec_check_current current_method q
+		in match methods with
+		| [] -> ()
+		| t::q ->
+			_rec_check_current t q; 
+			check_methods_names q
+
+	and purge_static_attrs (l: varType list) = match l with
+		| [] -> []
+		| attr::q when attr.static -> purge_static_attrs q
+		| attr::q -> attr::(purge_static_attrs q)
+
+	and purge_static_methods (l: methodType list) = match l with
+		| [] -> []
+		| m::q when m.static -> purge_static_methods q
+		| m::q -> m::(purge_static_methods q)
+
+	in let merge_attrs p_attrs attrs =
+		let purged_p_attrs = purge_static_attrs p_attrs
+		in let merge = purged_p_attrs@attrs
+		in 
+		check_attr_names merge;
+		merge
+
+	and merge_methods (p_methods: methodType list) (methods: methodType list) = 
+
+		let purged_p_methods = purge_static_methods p_methods
+		in let rec merge_each_method to_merge merged =
+
+			let rec make_merge (sub_merged_methods: methodType list) (method_to_add: methodType) =
+				match sub_merged_methods with
+				| [] -> method_to_add::merged
+				| m::q when m.name = method_to_add.name && m.params = method_to_add.params ->
+					(* This is a redefinition. This can't be a method with the same signature as another method in the same class,
+						for it has already been checked in a previous step in check_methods_names *)
 					(* We check that the new return type is at least a child of the redefined method's return type *)
-					check_type_is_legal currentClassesEnv  (Some methodType.return) (Some new_return) (Located.loc_of r);
+					(* Here, method_to_add comes from the parent, so its return type is the expected type *)
+					check_type_is_legal currentClassesEnv (Some method_to_add.return) (Some m.return) m.loc;
+					merged
+				| m::q -> make_merge q method_to_add
 
-					methodType.cl <- classname;
-					methodType.return <- new_return;
-					true
-		end else
-			false
+			in match to_merge with
+			| [] -> merged
+			| t::q -> merge_each_method q (make_merge merged t)
 
-	(* We check the methods environment and see if a method of the same signature doesn't already exists. *)
-	in let rec check_env = function 
-		(* Method doesn't already exist in the methodsEnv, we add it *)
-		| [] -> 
-			let build_method r n p static = 
-				{	
-					name = Located.elem_of n; 
-					return = type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r); 
-					static = static;
-					cl = classname;
-					params = (build_params_env currentClassesEnv p)
-				}
-			in (match m with 
-				| Method(r, n, p, _) -> (build_method r n p false)::methodsEnv
-				| StaticMethod(r, n, p, _) -> (build_method r n p true)::methodsEnv
-			)
-		(* Method already exists in the methodsEnv, we redefine it 
-			(sort of in some cases, covered by tests) *)
-		| t::q -> t.cl; (* Hack to make sure t is recognized as a methodType *)
-			(match m with
-				| Method(r, n, p, _) -> if (check_redefinition r n p t) then methodsEnv else check_env q
-				| _ -> check_env q
-			)
-	in check_env methodsEnv 
+		in merge_each_method purged_p_methods methods
 
-(* This function builds the methods definition environment of a class. 
-The param is a located list of attr_or_methods. Classname is here the name-string 
-of the class the method or attr belongs to *)
-(* It returns a list of methodType *)
-let rec build_methods_and_attrs_env currentClassesEnv methodsEnv attrsEnv classname elems = 
-	let rec add_attr_to_env env c n static = 
-		match env with 
-		| [] -> {n=Located.elem_of n; t=type_of_classname currentClassesEnv (Located.elem_of c) (Located.loc_of c); 
-					attr=true; static=static;}::attrsEnv
-		| t::q when t.n = (Located.elem_of n) -> raise (PError(Errors.NamingError(t.n), Located.loc_of n))
-		| t::q -> add_attr_to_env q c n static
 
-	in match elems with 
-		(* Reverse to retrieve the order of definition *)
-	| [] -> List.rev methodsEnv, List.rev attrsEnv 
+	in let rec check_class_env class_env =
+		match class_env with
+			(* The class env has already been check, return it as is. *)
+		| c when Hashtbl.find table_done c.name -> class_env
+			(* We do the checkings *)
+		| c -> 
+			Hashtbl.replace table_done c.name true;
+			check_attr_names c.attributes;
+			check_methods_names c.methods;
+				(* Retrieve attributes and methods of the parent *)
+			let p_attrs, p_methods = match c.parent with
+				| None -> [], []
+				| Some p_str -> 
+					let p_env = check_class_env (get_classdef currentClassesEnv p_str (Location.none)) (* No possible error in get_classdef *)
+					in p_env.attributes, p_env.methods
+			in
+			c.attributes <- merge_attrs p_attrs c.attributes;
+			c.methods 	 <- merge_methods p_methods c.methods;
+			c
+
+	in let rec check_classes_env classes_env = match classes_env with
+		| [] -> currentClassesEnv
+		| t::q -> check_class_env t; check_classes_env q
+	in
+	init_table_done currentClassesEnv;
+	check_classes_env currentClassesEnv
+
+
+(* This function builds the methods and attributes definition environments of a class. 
+	Classname is here the name-string of the class the method or attr belongs to *)
+(* It returns a list of methodType and a list of varType *)
+let rec build_shallow_methods_and_attrs_env currentClassesEnv methods_env attrs_env classname l_methods_attrs = 
+
+	let _add_method_to_shallow_end m = 
+		let build_method r n p static = {	
+			name = Located.elem_of n; 
+			return = type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r); 
+			static = static;
+			cl = classname;
+			params = build_params_env currentClassesEnv p;
+			loc = Located.loc_of m
+		}
+		in match Located.elem_of m with 
+			| Method(r, n, p, _) -> (build_method r n p false)::methods_env
+			| StaticMethod(r, n, p, _) -> (build_method r n p true)::methods_env
+
+	and _add_attr_to_shallow_env c n static =
+		{
+			n=Located.elem_of n; 
+			t=type_of_classname currentClassesEnv (Located.elem_of c) (Located.loc_of c); 
+			attr=true; 
+			static=static;
+			loc=Located.loc_of n;
+		}::attrs_env
+
+	in match l_methods_attrs with
+	| [] -> List.rev methods_env, List.rev attrs_env (* Reverse to retrieve the order of definition *)
 	| t::q -> (match (Located.elem_of t) with 
-				(* The item is a method, we check its environment *)
 			| Method _ | StaticMethod _ -> 
-				build_methods_and_attrs_env currentClassesEnv 
-					(add_method_to_env currentClassesEnv methodsEnv classname (Located.elem_of t)) 
-					attrsEnv classname q
+				build_shallow_methods_and_attrs_env currentClassesEnv (_add_method_to_shallow_end t) attrs_env classname q
 
 			| Attr(c, n) | AttrWithValue(c, n, _) -> 
-				build_methods_and_attrs_env currentClassesEnv methodsEnv (add_attr_to_env attrsEnv c n false) classname q
+				build_shallow_methods_and_attrs_env currentClassesEnv methods_env (_add_attr_to_shallow_env c n false) classname q
 
 			| StaticAttr(c, n) | StaticAttrWithValue(c, n, _) -> 
-				build_methods_and_attrs_env currentClassesEnv methodsEnv (add_attr_to_env attrsEnv c n true) classname q
-		)	 
+				build_shallow_methods_and_attrs_env currentClassesEnv methods_env (_add_attr_to_shallow_env c n true) classname q
+		)
+
+
+(* Change the class environment and add the methods and attributs defined in the classes, but not in their parents.
+	Also, check if parents are defined.
+	We don't check here if names of attributes or methods are not used twice. *)
+let rec build_shallow_types_2 currentClassesEnv tree =
+	match tree with
+	| [] -> currentClassesEnv
+	| t::q -> (match Located.elem_of t with 
+			| Classdef (n, l) | ClassdefWithParent (n, _, l) -> 
+
+				let methods, attrs = build_shallow_methods_and_attrs_env currentClassesEnv [] [] (Located.elem_of n) l
+				and classdef = get_classdef currentClassesEnv (Located.elem_of n) (Located.loc_of n)
+				and parent = (match Located.elem_of t with
+					| Classdef _ -> Some "Object"
+					| ClassdefWithParent (_, p, _) -> Some (type_of_classname currentClassesEnv (Located.elem_of p) (Located.loc_of p))
+				)
+				in 
+				classdef.methods <- methods;
+				classdef.attributes <- attrs;
+				classdef.parent <- parent;
+
+				build_shallow_types_2 currentClassesEnv q
+
+			| _ -> build_shallow_types_2 currentClassesEnv q
+		)
 
 (* Build a class environment with only the names of the classes defined in the file. *)
-let rec build_shallow_types shallowClassesEnv tree = 
+let rec build_shallow_types_1 shallowClassesEnv tree = 
 	let rec _check_type_name n envToLookUp = match envToLookUp with
 		| [] -> Located.elem_of n
 			(* Class already exists *)
@@ -151,46 +239,22 @@ let rec build_shallow_types shallowClassesEnv tree =
 	in match tree with
 	| [] -> shallowClassesEnv
 	| t::q -> (match Located.elem_of t with 
-			| Classdef (n, _) | ClassdefWithParent (n, _, _) -> build_shallow_types 
-				({name=_check_type_name n shallowClassesEnv; parent=None; methods=[]; attributes=[]}::shallowClassesEnv) q
-			| _ -> build_shallow_types shallowClassesEnv q
+			| Classdef (n, _) | ClassdefWithParent (n, _, _) -> 
+				build_shallow_types_1 ({
+					name=_check_type_name n shallowClassesEnv; 
+					parent=None; 
+					methods=[]; 
+					attributes=[]
+				}::shallowClassesEnv) q
+			| _ -> build_shallow_types_1 shallowClassesEnv q
 		)
 
 (* This function builds the classes definition environment of the located structured tree in param *)
 (* It returns a list of classTypeEnv *)
 let build_classes_env tree = 
-	(* This inner function receives a non-located structure, 
-	which is either a Classdef or a ClassdefWithParent. It returns a classTypeEnv *)
-	let rec modify_class_env currentClassesEnv c = match c with 
-		| Classdef(n, l) -> let (methods, attrs) = 
-				build_methods_and_attrs_env currentClassesEnv [] [] (Located.elem_of n) l
-			and classdef = get_classdef currentClassesEnv (Located.elem_of n) (Located.loc_of n)
-			in 
-			classdef.parent <- Some "Object";
-			classdef.methods <- methods;
-			classdef.attributes <- attrs;
-			currentClassesEnv
-		| ClassdefWithParent(n, p, l) -> let (methods, attrs) =
-			(* Use copy_methods_types_list to get an independent copy of the parent methods *)
-			(* Yet, no need to copy the attributes list since we never change them in a son class *)
-			build_methods_and_attrs_env currentClassesEnv 
-					(copy_methods_types_list (methods_of_type currentClassesEnv false p)) 
-					(attributes_of_type currentClassesEnv false p) 
-					(Located.elem_of n) l 
-			and classdef = get_classdef currentClassesEnv (Located.elem_of n) (Located.loc_of n)
-			in 
-			classdef.parent <- Some (type_of_classname currentClassesEnv (Located.elem_of p) (Located.loc_of p));
-			classdef.methods <- methods;
-			classdef.attributes <- attrs;
-			currentClassesEnv
-	in let rec modify_classes_env currentClassesEnv tr = match tr with 
-		| [] -> currentClassesEnv
-		| t::q -> (match (Located.elem_of t) with 
-					(* The structure is an expression, don't add it to the class environment *)
-				| Expr e -> modify_classes_env currentClassesEnv q
-					(* The structure is a class definition, we check its environment *)
-				| _ -> modify_classes_env (modify_class_env currentClassesEnv (Located.elem_of t)) q
-			)
-	(* Use this because we need to access the environment at any moment *)
-	in List.rev (modify_classes_env (build_shallow_types static_classes_env tree) tree)
+	let shallow_types_1 = build_shallow_types_1 static_classes_env tree
+	in let shallow_types_2 = build_shallow_types_2 shallow_types_1 tree
+	in let final_env = check_env shallow_types_2
+	in
+	List.rev final_env
 

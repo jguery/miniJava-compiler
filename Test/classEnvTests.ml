@@ -58,7 +58,8 @@ let test_basic_class _ =
 			return="Int";
 			static=false;
 			cl="A";
-			params=[]
+			params=[];
+			loc=Location.none;
 		};]}]
 		(*  class A { Int m() {..} } *)
 		[mk_class "A" [mk_method "Int" "m" [];]];
@@ -70,7 +71,8 @@ let test_basic_class _ =
 			return="Boolean";
 			static=false;
 			cl="A";
-			params=["String";]
+			params=["String";];
+			loc=Location.none;
 		};]}]
 		(*  class A { Int m(String s) {..} } *)
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String";];]];
@@ -82,7 +84,8 @@ let test_basic_class _ =
 			return="Boolean";
 			static=false;
 			cl="A";
-			params=["String"; "Int"]
+			params=["String"; "Int"];
+			loc=Location.none;
 		};]}]
 		(*  class A { Int m(String s, B b) {..} } *)
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "String"; mk_param "Int"];]];
@@ -94,12 +97,14 @@ let test_basic_class _ =
 			return="Boolean";
 			static=false;
 			cl="A";
+			loc=Location.none;
 			params=["String"; "Boolean"]
 		};{
 			name="m2";
 			return="String";
 			static=false;
 			cl="A";
+			loc=Location.none;
 			params=[]
 		};]}]
 		(*  class A { Boolean m(String s, B b) {..} String m2() {..} } *)
@@ -133,18 +138,21 @@ let test_many_classes _ =
 			return="Boolean";
 			static=false;
 			cl="A";
+			loc=Location.none;
 			params=["String"; "B"]
 		};{
 			name="m2";
 			return="String";
 			static=false;
 			cl="A";
+			loc=Location.none;
 			params=[]
 		};]}; {name="B"; parent=Some "Object"; attributes=[]; methods=[{
 			name="m3";
 			return="A";
 			static=false;
 			cl="B";
+			loc=Location.none;
 			params=["Int";]
 		};]};]
 		(*  class A { Boolean m(String s, B b) {..} String m2() {..} } *)
@@ -160,6 +168,13 @@ let test_class_with_parent _ =
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
 		[mk_class "A" []; mk_class_p "B" "A" []];
 
+	(* Two classes with one being the parent of the other, and the parent is defined after *)
+	build_success_test
+		(* class B extends A {} class A {} *)
+		[{name="B"; parent=Some "A"; attributes=[]; methods=[]};
+		 {name="A"; parent=Some "Object"; attributes=[]; methods=[]}]
+		[mk_class_p "B" "A" []; mk_class "A" []];
+
 	(* Class A isn't defined *)
 	build_failure_test
 		[mk_class_p "B" "A" []]
@@ -173,6 +188,7 @@ let test_class_with_parent _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=[]
 			};]};
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[{
@@ -180,12 +196,14 @@ let test_class_with_parent _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=[]
 			};{
 				name="m2";
 				return="Int";
 				static=false;
 				cl="B";
+				loc=Location.none;
 				params=["Int"]
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" []]; mk_class_p "B" "A" [mk_method "Int" "m2" [mk_param "Int"]]]
@@ -199,6 +217,7 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=["Int"]
 			};]};
 		 {name="B"; parent=Some("A"); attributes=[]; methods=[{
@@ -206,10 +225,61 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="B";
+				loc=Location.none;
 				params=["Int"]
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
 		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"]]];
+
+	(* Redefinition of several parent methods *)
+	build_success_test
+		(* class A { Boolean m() {..} } class B extends A { Boolean m() {..} } *)
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
+				name="s";
+				return="String";
+				static=false;
+				cl="A";
+				loc=Location.none;
+				params=[]
+			};{
+				name="m";
+				return="Boolean";
+				static=false;
+				cl="A";
+				loc=Location.none;
+				params=["Int"]
+			};{
+				name="m2";
+				return="Int";
+				static=false;
+				cl="A";
+				loc=Location.none;
+				params=[]
+			};]};
+		 {name="B"; parent=Some("A"); attributes=[]; methods=[{
+				name="s";
+				return="String";
+				static=false;
+				cl="A";
+				loc=Location.none;
+				params=[]
+			};{
+				name="m";
+				return="Boolean";
+				static=false;
+				cl="B";
+				loc=Location.none;
+				params=["Int"]
+			};{
+				name="m2";
+				return="Int";
+				static=false;
+				cl="B";
+				loc=Location.none;
+				params=[]
+			};]};]
+		[mk_class "A" [mk_method "String" "s" []; mk_method "Boolean" "m" [mk_param "Int"]; mk_method "Int" "m2" [];]; 
+		 mk_class_p "B" "A" [mk_method "Boolean" "m" [mk_param "Int"]; mk_method "Int" "m2" [];]];
 
 	(* Illegal redefinition: new return type isn't a child of the old one *)
 	build_failure_test
@@ -225,6 +295,7 @@ let test_method_redefinition _ =
 				return="Object";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=["Int"]
 			};]};
 		 {name="B"; parent=Some("A"); attributes=[]; methods=[{
@@ -232,6 +303,7 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="B";
+				loc=Location.none;
 				params=["Int"]
 			};]};]
 		[mk_class "A" [mk_method "Object" "m" [mk_param "Int"]]; 
@@ -245,6 +317,7 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=["Int"]
 			};]};
 		 {name="B"; parent=Some("A"); attributes=[]; methods=[{
@@ -252,12 +325,14 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=["Int"]
 			};{
 				name="m";
 				return="Boolean";
 				static=false;
 				cl="B";
+				loc=Location.none;
 				params=["String"]
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
@@ -270,6 +345,7 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=["Int"]
 			};]};
 		 {name="B"; parent=Some("A"); attributes=[]; methods=[{
@@ -277,12 +353,14 @@ let test_method_redefinition _ =
 				return="Boolean";
 				static=false;
 				cl="A";
+				loc=Location.none;
 				params=["Int"]
 			};{
 				name="m";
 				return="Boolean";
 				static=false;
 				cl="B";
+				loc=Location.none;
 				params=["Int"; "Boolean"]
 			};]};]
 		[mk_class "A" [mk_method "Boolean" "m" [mk_param "Int"]]; 
@@ -295,17 +373,20 @@ let test_method_overloading _ =
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none;
 			params=["Int"]
 		};{
 			name="m";
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none;
 			params=[]
 		};{
 			name="m";
 			return="Int";
 			static=false;
+			loc=Location.none;
 			cl="A";
 			params=["Boolean"]
 		};]}]
@@ -316,53 +397,61 @@ let test_attributes _ =
 	build_success_test
 		(* class A {Int i} *)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=false;};]; methods=[];}]
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_attr "Int" "i"]];
 	build_success_test
 		(* class A {Int i} *)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=true;};]; methods=[];}]
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=true;};]; methods=[];}]
 		[mk_class "A" [mk_sattr "Int" "i"]];
 	build_success_test
 		(* class A {Int i=1} *)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=false;};]; methods=[];}]
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_attr_v "Int" "i" (Int (mk_none 1))]];
 	build_success_test
 		(* class A {static Int i=1} *)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=true;};]; methods=[];}]
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=true;};]; methods=[];}]
 		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]];
 	build_success_test
 		(* class A {Int i} class B extends A {Boolean b}*)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=false;};]; methods=[];};
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};]; methods=[];};
 		 {name="B"; parent=Some "A"; attributes=[
-		 		{n="i"; t="Int"; attr=true; static=false;};
-				{n="b"; t="Boolean"; attr=true; static=false;};]; methods=[];}]
+		 		{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};
+				{n="b"; t="Boolean"; attr=true; loc=Location.none; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_attr "Int" "i"]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
 	build_success_test
 		(* class A {Int i=1} class B extends A {Boolean b}*)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=false;};]; methods=[];};
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};]; methods=[];};
 		 {name="B"; parent=Some "A"; attributes=[
-		 		{n="i"; t="Int"; attr=true; static=false;};
-				{n="b"; t="Boolean"; attr=true; static=false;};]; methods=[];}]
+		 		{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};
+				{n="b"; t="Boolean"; attr=true; loc=Location.none; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_attr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
 	build_success_test
 		(* class A {static Int i} class B extends A {Boolean b}*)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=true;};]; methods=[];};
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=true;};]; methods=[];};
 		 {name="B"; parent=Some "A"; attributes=[
-				{n="b"; t="Boolean"; attr=true; static=false;};]; methods=[];}]
+				{n="b"; t="Boolean"; attr=true; loc=Location.none; static=false;};]; methods=[];}]
 		[mk_class "A" [mk_sattr "Int" "i"]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
 	build_success_test
 		(* class A {static Int i= 1} class B extends A {Boolean b}*)
 		[{name="A"; parent=Some "Object"; 
-			attributes=[{n="i"; t="Int"; attr=true; static=true;};]; methods=[];};
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=true;};]; methods=[];};
 		 {name="B"; parent=Some "A"; attributes=[
-				{n="b"; t="Boolean"; attr=true; static=false;};]; methods=[];}]
-		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]]
+				{n="b"; t="Boolean"; attr=true; loc=Location.none; static=false;};]; methods=[];}]
+		[mk_class "A" [mk_sattr_v "Int" "i" (Int (mk_none 1))]; mk_class_p "B" "A" [mk_attr "Boolean" "b"]];
+	build_success_test
+		(* class B extends A {Boolean b} class A {Int i} *)
+		[{name="B"; parent=Some "A"; attributes=[
+		 		{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};
+				{n="b"; t="Boolean"; attr=true; loc=Location.none; static=false;};]; methods=[];};
+		 {name="A"; parent=Some "Object"; 
+			attributes=[{n="i"; t="Int"; attr=true; loc=Location.none; static=false;};]; methods=[];};]
+		[mk_class_p "B" "A" [mk_attr "Boolean" "b"]; mk_class "A" [mk_attr "Int" "i"];]
 
 let test_static_methods _ = 
 	build_success_test
@@ -371,6 +460,7 @@ let test_static_methods _ =
 				return="Boolean";
 				static=true;
 				cl="A";
+				loc=Location.none; 
 				params=["Int"]
 			};]}]
 		(* class A { static Boolean m() {...} } *)
@@ -380,6 +470,7 @@ let test_static_methods _ =
 				name="m";
 				return="Boolean";
 				static=true;
+				loc=Location.none; 
 				cl="A";
 				params=["Int"]
 		 };]}; 
@@ -393,6 +484,7 @@ let test_static_methods _ =
 				return="Boolean";
 				static=true;
 				cl="A";
+				loc=Location.none; 
 				params=["Int"]
 		 };]};
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[{
@@ -400,6 +492,7 @@ let test_static_methods _ =
 				return="Boolean";
 				static=true;
 				cl="B";
+				loc=Location.none; 
 				params=["Int"]
 		 };]}]
 		(* class A { static Boolean m() {..} } class B extends A { static Boolean m() {..} } *)
@@ -474,13 +567,14 @@ let test_naming_conflicts _ =
 
 let suite =
 	"suite">:::
-		["basicClass">:: test_basic_class;
-		 "manyClasses">:: test_many_classes;
+		[
+		"basicClass">:: test_basic_class;
+ 		 "manyClasses">:: test_many_classes;
 
 		 "classWithParent">:: test_class_with_parent;
 
 		 "methodRedefinition">:: test_method_redefinition;
-		 "methodOverloading">:: test_method_overloading;
+	 	 "methodOverloading">:: test_method_overloading;
 
 		 "attributes">:: test_attributes;
 

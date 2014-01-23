@@ -156,7 +156,7 @@ let test_instance _  =
 		("A")  (* Is this logical ?? *)
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
-		[{t="A"; n="a"; attr=true; static=false;}]
+		[{t="A"; n="a"; attr=true; loc=Location.none; static=false;}]
 		(AttrAffect(mk_none "a", mk_none (Instance (mk_none (Classname (mk_none "B"))))))
 
 let test_method_call _ = 
@@ -167,6 +167,7 @@ let test_method_call _ =
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}]
 		[]
@@ -179,6 +180,7 @@ let test_method_call _ =
 			return="A";
 			static=false;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}]
 		[]
@@ -191,6 +193,7 @@ let test_method_call _ =
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}]
 		[]
@@ -203,6 +206,7 @@ let test_method_call _ =
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}]
 		[]
@@ -216,6 +220,7 @@ let test_method_call _ =
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none; 
 			params=["Int"]
 		};]}]
 		[]
@@ -227,6 +232,7 @@ let test_method_call _ =
 			return="Int";
 			static=false;
 			cl="A";
+			loc=Location.none; 
 			params=["Int"]
 		};]}]
 		[]
@@ -240,6 +246,7 @@ let test_method_call _ =
 			return="Int";
 			static=true;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}]
 		[]
@@ -285,28 +292,28 @@ let test_local_var _ =
 let test_var _ = 
 	build_success_test
 		"Int"
-		[] [{t="Int"; n="i"; attr=false; static=false;}]
+		[] [{t="Int"; n="i"; attr=false; loc=Location.none; static=false;}]
 		(* i *)
 		(Var(mk_none "i"));
 	build_success_test
 		"Int"
 		[] 
-		[{t="String"; n="a"; attr=false; static=false;};
-		 {t="Int"; n="i"; attr=false; static=false;}]
+		[{t="String"; n="a"; attr=false; loc=Location.none; static=false;};
+		 {t="Int"; n="i"; attr=false; loc=Location.none; static=false;}]
 		(* i *)
 		(Var(mk_none "i"));
 	build_failure_test
-		[] [{t="Int"; n="i"; attr=false; static=false;}]
+		[] [{t="Int"; n="i"; attr=false; loc=Location.none; static=false;}]
 		(* a *)
 		(Var(mk_none "a"))
 		(Errors.UndefinedObject("a"));
 	build_failure_test
-		[] [{t="Int"; n="ii"; attr=false; static=false;}]
+		[] [{t="Int"; n="ii"; attr=false; loc=Location.none; static=false;}]
 		(* a *)
 		(Var(mk_none "i"))
 		(Errors.UndefinedObject("i"));
 	build_failure_test
-		[] [{t="Int"; n="i"; attr=false; static=false;}]
+		[] [{t="Int"; n="i"; attr=false; loc=Location.none; static=false;}]
 		(* a *)
 		(Var(mk_none "ii"))
 		(Errors.UndefinedObject("ii"))
@@ -314,21 +321,21 @@ let test_var _ =
 let test_attr_affect _ = 
 	build_success_test
 		"Int"
-		[] [{t="Int"; n="i"; attr=true; static=false}]
+		[] [{t="Int"; n="i"; attr=true; loc=Location.none; static=false}]
 		(* i = 3 *)
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 3))));
 	build_failure_test
-		[] [{t="Int"; n="i"; attr=true; static=false}]
+		[] [{t="Int"; n="i"; attr=true; loc=Location.none; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (String (mk_none "foo"))))
 		(Errors.TypeError("Int", "String"));
 	build_failure_test
-		[] [{t="Int"; n="a"; attr=true; static=false}]
+		[] [{t="Int"; n="a"; attr=true; loc=Location.none; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (String (mk_none "foo"))))
 		(Errors.UndefinedObject("i"));
 	build_failure_test
-		[] [{t="Int"; n="i"; attr=false; static=false}]
+		[] [{t="Int"; n="i"; attr=false; loc=Location.none; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 1))))
 		(Errors.UndefinedObject("i")) (* Undefined because i is not an attribute *)
@@ -341,6 +348,7 @@ let test_static_method_call _ =
 			return="Int";
 			static=true;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}] []
 		(* A.m() *)
@@ -352,12 +360,14 @@ let test_static_method_call _ =
 			return="Int";
 			static=true;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}; {name="B"; parent=Some "A"; attributes=[]; methods=[{
 			name="m";
 			return="String";
 			static=true;
 			cl="B";
+			loc=Location.none; 
 			params=[]
 		};]};] 
 		[]
@@ -369,12 +379,14 @@ let test_static_method_call _ =
 			return="Int";
 			static=true;
 			cl="A";
+			loc=Location.none; 
 			params=[]
 		};]}; {name="B"; parent=Some "A"; attributes=[]; methods=[{
 			name="m";
 			return="String";
 			static=true;
 			cl="B";
+			loc=Location.none; 
 			params=[]
 		};]};] 
 		[]
@@ -566,7 +578,7 @@ let test_cast _ =
 		(* class A {} class B extends A {} *)
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
-		[{n="b"; t="B"; attr=false; static=false;}]
+		[{n="b"; t="B"; attr=false; loc=Location.none; static=false;}]
 		(* (A)b *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))));
 	build_success_test
@@ -574,14 +586,14 @@ let test_cast _ =
 		(* class A {} class B extends A {} *)
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
-		[{n="a"; t="A"; attr=false; static=false;}]
+		[{n="a"; t="A"; attr=false; loc=Location.none; static=false;}]
 		(* (B)a *)
 		(Cast(mk_none (Classname (mk_none "B")), mk_none (Var (mk_none "a"))));
 	build_failure_test
 		(* class A {} class B {} *)
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "Object"; attributes=[]; methods=[]}]
-		[{n="b"; t="B"; attr=false; static=false;}]
+		[{n="b"; t="B"; attr=false; loc=Location.none; static=false;}]
 		(* (A)b ; definitly not legal! *) 
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))
 		(Errors.IllegalCast("B", "A"));
@@ -591,7 +603,7 @@ let test_cast _ =
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]};
 		 {name="C"; parent=Some "B"; attributes=[]; methods=[]}]
-		[{n="c"; t="C"; attr=false; static=false;}]
+		[{n="c"; t="C"; attr=false; loc=Location.none; static=false;}]
 		(* (A)c <= up casting, always legal *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "c"))));
 	build_success_test
@@ -600,7 +612,7 @@ let test_cast _ =
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]};
 		 {name="C"; parent=Some "B"; attributes=[]; methods=[]}]
-		[{n="a"; t="A"; attr=false; static=false;}]
+		[{n="a"; t="A"; attr=false; loc=Location.none; static=false;}]
 		(* (C)a <= down casting, not always legal *)
 		(Cast(mk_none (Classname (mk_none "C")), mk_none (Var (mk_none "a"))));
 	build_success_test
@@ -609,7 +621,7 @@ let test_cast _ =
 		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
 		 {name="B"; parent=Some "A"; attributes=[]; methods=[]};
 		 {name="C"; parent=Some "A"; attributes=[]; methods=[]}]
-		[{n="b"; t="B"; attr=false; static=false;}]
+		[{n="b"; t="B"; attr=false; loc=Location.none; static=false;}]
 		(* (C)((A)b) <= down casting, not legal but not detectable at this point *)
 		(Cast(mk_none (Classname (mk_none "C")), mk_none (
 			Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "b"))))));
@@ -617,14 +629,14 @@ let test_cast _ =
 		("Int")
 		(* class A extends Int {} *)
 		[{name="A"; parent=Some "Int"; attributes=[]; methods=[]}]
-		[{n="a"; t="A"; attr=false; static=false;}]
+		[{n="a"; t="A"; attr=false; loc=Location.none; static=false;}]
 		(* (Int)a *)
 		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Var (mk_none "a"))));
 	build_success_test
 		("A")
 		(* class A extends Int {} *)
 		[{name="A"; parent=Some "Int"; attributes=[]; methods=[]}]
-		[{n="i"; t="Int"; attr=false; static=false;}]
+		[{n="i"; t="Int"; attr=false; loc=Location.none; static=false;}]
 		(* (A)i *)
 		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "i"))))
 

@@ -6,6 +6,7 @@ type varType = {
 	t : string;
 	attr : bool;
 	static : bool;
+	loc: Location.t;
 }
 
 (* Do we need location info ? Don't add it for now *)
@@ -13,8 +14,9 @@ type methodType = {
 	name : string;
 	mutable return : string;
 	static : bool;
-	mutable cl : string; (* Class the method belongs to. Can change in case of redefinition *)
+	mutable cl : string;  (* TODO remove this: no use in the typer *) (* Class the method belongs to. Can change in case of redefinition *)
 	params : string list;
+	loc: Location.t;
 }
 
 type classTypeEnv = {
@@ -33,6 +35,7 @@ let rec copy_methods_types_list = function
 		static = t.static;
 		cl = t.cl;
 		params = t.params;
+		loc = t.loc;
 	}::(copy_methods_types_list q)
 
 (**************************************************************************************************)

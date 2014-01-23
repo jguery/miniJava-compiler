@@ -26,8 +26,8 @@ let rec get_var_type varEnv var_string loc checkAttr = match varEnv with
 
 let rec params_to_vartype classesEnv nparams = match nparams with 
 	| [] -> []
-	| t::q -> (match Located.elem_of t with 
-			| TypedParam(_, s, t) -> {t=t; n=Located.elem_of s; attr=false; static=false;}
+	| h::q -> (match Located.elem_of h with 
+			| TypedParam(_, s, t) -> {t=t; n=Located.elem_of s; attr=false; static=false; loc=Located.loc_of h}
 				::(params_to_vartype classesEnv q)
 		)
 
@@ -91,8 +91,12 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 		let nve = type_expr classname_str static_m  classesEnv varEnv ve
 		and classname_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
 		in let ne = type_expr classname_str static_m  classesEnv ({
-			t=check_type_is_legal classesEnv (Some classname_type) (Some (type_of_expr nve)) (Located.loc_of ve); 
-			n=(Located.elem_of v); attr=false; static=false}::varEnv) e
+				t=check_type_is_legal classesEnv (Some classname_type) (Some (type_of_expr nve)) (Located.loc_of ve); 
+				n=(Located.elem_of v); 
+				attr=false; 
+				static=false;
+				loc=Located.loc_of v;
+			}::varEnv) e
 		in TypedLocal (c, v, Located.mk_elem nve (Located.loc_of ve), 
 			Located.mk_elem ne (Located.loc_of e), type_of_expr ne)
 
