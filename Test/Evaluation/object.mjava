@@ -18,7 +18,7 @@ class C {
 		i=4; this
 	}
 	Int m() {
-		i+1 // Operation on null, should raise an error from evaluator
+		i+1 // Operation on null (if not init), should raise an error from evaluator
 	}
 }
 
@@ -34,5 +34,7 @@ false != true
 (new A).m(1)
 (new A).m2(1)
 ((new C).init()).m()
+A a = new A in
+	a
 
 // Why the hell are the expressions considered in reverse order ??

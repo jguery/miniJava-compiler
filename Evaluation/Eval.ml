@@ -194,6 +194,11 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedMethodCall (caller, m_name, args, t) -> eval_method_call caller m_name args t
 	| TypedVar (var_name, t) -> eval_var_call var_name t
 	| TypedAttrAffect (attr_name, e, t) -> eval_attr_affect attr_name e t
+	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) ->
+
+(* 	  | TypedLocal of classname Located.t * string Located.t * typed_expr Located.t * typed_expr Located.t 
+  	* string
+ *)
 
 
 let eval typed_tree classes_descriptor methods_table = 
