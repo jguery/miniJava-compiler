@@ -137,7 +137,7 @@ let rec check_env currentClassesEnv =
 
 	in let rec check_class_env class_env =
 		match class_env with
-			(* The class env has already been check, return it as is. *)
+			(* The env for that class has already been checked, return it as is. *)
 		| c when Hashtbl.find table_done c.name -> class_env
 			(* We do the checkings *)
 		| c -> 
@@ -168,7 +168,7 @@ let rec check_env currentClassesEnv =
 (* It returns a list of methodType and a list of varType *)
 let rec build_shallow_methods_and_attrs_env currentClassesEnv methods_env attrs_env classname l_methods_attrs = 
 
-	let _add_method_to_shallow_end m = 
+	let _add_method_to_shallow_env m = 
 		let build_method r n p static = {	
 			name = Located.elem_of n; 
 			return = type_of_classname currentClassesEnv (Located.elem_of r) (Located.loc_of r); 
@@ -194,7 +194,7 @@ let rec build_shallow_methods_and_attrs_env currentClassesEnv methods_env attrs_
 	| [] -> List.rev methods_env, List.rev attrs_env (* Reverse to retrieve the order of definition *)
 	| t::q -> (match (Located.elem_of t) with 
 			| Method _ | StaticMethod _ -> 
-				build_shallow_methods_and_attrs_env currentClassesEnv (_add_method_to_shallow_end t) attrs_env classname q
+				build_shallow_methods_and_attrs_env currentClassesEnv (_add_method_to_shallow_env t) attrs_env classname q
 
 			| Attr(c, n) | AttrWithValue(c, n, _) -> 
 				build_shallow_methods_and_attrs_env currentClassesEnv methods_env (_add_attr_to_shallow_env c n false) classname q

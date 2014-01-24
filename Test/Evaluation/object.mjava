@@ -43,5 +43,6 @@ A a = new A in
 		(a.m2(1)>0) && b.m(2)
 Int i = 5 in
 	i+3
+((new D).init()).m()
 
 // Why the hell are the expressions considered in reverse order ??

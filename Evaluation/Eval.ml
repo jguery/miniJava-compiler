@@ -65,8 +65,9 @@ let search_heap heap addr loc =
 let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_addr: int option) expr = 
 
 	let create_new_default_object_descriptor (class_descriptor: CompileStructures.class_descriptor) = 
+		(* TODO what to do with static attrs ? *)
 		let create_new_hashtable newhash k v =
-			Hashtbl.add newhash k (eval_expr heap heap_size stack classes_descriptor methods_table None v)
+			Hashtbl.add newhash k (eval_expr heap heap_size stack classes_descriptor methods_table None v.default)
 		in match class_descriptor with
 		| ClassDescriptor descriptor -> ObjectDescriptor({ 
 				t = descriptor.name;
