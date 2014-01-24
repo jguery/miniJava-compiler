@@ -23,7 +23,9 @@ class C {
 }
 
 class D extends C {
-	
+	Int m() {
+		i+10
+	}	
 }
 
 new A
@@ -44,5 +46,13 @@ A a = new A in
 Int i = 5 in
 	i+3
 ((new D).init()).m()
+!true;
+-45
+B b = new B in
+	if (b.m(-4)) {
+		3
+	} else {
+		4
+	}
 
 // Why the hell are the expressions considered in reverse order ??

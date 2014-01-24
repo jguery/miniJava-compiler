@@ -77,7 +77,17 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		| BooleanClass -> BooleanDescriptor None
 		| StringClass -> StringDescriptor None
 
-	in let eval_binop b e1 e2 t = 
+	in let eval_unop u e t = 
+		let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e
+		in match Located.elem_of u with 
+		| Udiff -> 
+			let e_val = bool_value (search_heap heap addr_e (Located.loc_of e))
+			in add_to_heap heap heap_size (BooleanDescriptor (Some (not e_val)))
+		| Uminus ->
+			let e_val = int_value (search_heap heap addr_e (Located.loc_of e))
+			in add_to_heap heap heap_size (IntDescriptor (Some (-e_val)))
+
+	and eval_binop b e1 e2 t = 
 		let eval_bool_binop binop a b = match binop with
 			| Beq -> a = b
 			| Bdiff -> a <> b
@@ -191,6 +201,15 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		Hashtbl.add new_stack (Located.elem_of var_name) var_addr;
 		eval_expr heap heap_size new_stack classes_descriptor methods_table this_addr sub_expr
  
+	and eval_condition e_if e_then e_else t =
+		let addr_e_if = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_if
+		in let val_e_if = bool_value (search_heap heap addr_e_if (Located.loc_of e_if))
+		in 
+		if val_e_if then 
+			eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_then
+		else 
+			eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_else
+
 	in match Located.elem_of expr with
 	| TypedNull -> -1 (* -1 is the address of null *)
 	| TypedThis t -> Option.get this_addr (* Cannot raise exception because typer already treats the error *)
@@ -199,11 +218,18 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedBoolean (b, t) -> add_to_heap heap heap_size (BooleanDescriptor (Some (Located.elem_of b)))
 	| TypedInstance (c, t) -> add_to_heap heap heap_size (create_new_default_object_descriptor 
 			(Hashtbl.find classes_descriptor (Structure.string_of_classname (Located.elem_of c))))
+	| TypedUnop (u, e, t) -> eval_unop u e t
 	| TypedBinop (b, e1, e2, t) -> eval_binop b e1 e2 t
 	| TypedMethodCall (caller, m_name, args, t) -> eval_method_call caller m_name args t
 	| TypedVar (var_name, t) -> eval_var_call var_name t
 	| TypedAttrAffect (attr_name, e, t) -> eval_attr_affect attr_name e t
 	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) -> eval_local apparent_type var_name var_expr sub_expr t
+	| TypedCondition (e_if, e_then, e_else, t) -> eval_condition e_if e_then e_else t
+
+
+(*  | TypedStaticMethodCall of classname Located.t * string Located.t * typed_expr Located.t list * string
+  | TypedCast of classname Located.t * typed_expr Located.t * string
+  | TypedInstanceof of typed_expr Located.t * classname Located.t * string *)
 
 let eval typed_tree classes_descriptor methods_table = 
 	let heap = Hashtbl.create heap_default_size
