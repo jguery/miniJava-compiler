@@ -152,6 +152,12 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 		else 
 			TypedThis (Option.get classname_str)
 
+	and type_instanceof e c =
+		let ne = type_expr classname_str static_m classesEnv varEnv e
+		in match type_of_expr ne with
+		| "null" -> raise (PError(NullError, Located.loc_of e))
+		| _ -> TypedInstanceof(Located.mk_elem ne (Located.loc_of e), c, "Boolean")
+
 	in match Located.elem_of expr with
   	| Null -> TypedNull
   	| This -> type_this ()
@@ -163,8 +169,7 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 	| Instance cn -> TypedInstance(cn, (get_classdef classesEnv 
 		(string_of_classname (Located.elem_of cn)) (Located.loc_of cn)).name)
 	| MethodCall (e, m, args) -> type_method_call e m args
-	| Instanceof (e, c) -> TypedInstanceof(Located.mk_elem (type_expr classname_str static_m classesEnv varEnv e) 
-								(Located.loc_of e), c, "Boolean")
+	| Instanceof (e, c) -> type_instanceof e c
 	| Local (c, v, ve, e) -> type_local_variable c v ve e
 	| Var s -> TypedVar(s, get_var_type varEnv (Located.elem_of s) (Located.loc_of s) false)
 	| AttrAffect (s, e) -> type_attr_affect s e

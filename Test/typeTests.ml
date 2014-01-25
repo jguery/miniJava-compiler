@@ -287,7 +287,12 @@ let test_instanceof _ =
 		"Boolean"
 		[] []
 		(* 1 instanceof Int *)
-		(Instanceof(mk_none (Int (mk_none 1)), mk_none (Classname (mk_none "Int"))))
+		(Instanceof(mk_none (Int (mk_none 1)), mk_none (Classname (mk_none "Int"))));
+	build_failure_test
+		[] []
+		(* 1 instanceof Int *)
+		(Instanceof(mk_none Null, mk_none (Classname (mk_none "Int"))))
+		(Errors.NullError)
 
 let test_local_var _ = 
 	build_success_test
