@@ -359,7 +359,17 @@ let test_attr_affect _ =
 		[] [{t="Int"; n="i"; attr=false; loc=Location.none; static=false}]
 		(* i = "foo" *)
 		(AttrAffect(mk_none "i", mk_none (Int (mk_none 1))))
-		(Errors.UndefinedObject("i")) (* Undefined because i is not an attribute *)
+		(Errors.UndefinedObject("i")); (* Undefined because i is not an attribute *)
+	build_success_test
+		"Int"
+		[] [{t="Int"; n="i"; attr=true; loc=Location.none; static=false}]
+		(* i = null *)
+		(AttrAffect(mk_none "i", mk_none (Null)));
+	build_success_test
+		"Int"
+		[] [{t="Int"; n="i"; attr=true; loc=Location.none; static=true}]
+		(* i = null *)
+		(AttrAffect(mk_none "i", mk_none (Null)))
 
 let test_static_method_call _ =
 	build_success_test
@@ -555,6 +565,10 @@ let test_method_expr _ =
 			(* class A { Int testM() {i} } *)
 			[mk_class "A" [mk_method_e "Int" "testM" [] (Var(mk_none "i"))]]
 			(Errors.UndefinedObject("i"));
+		build_method_expr_success_test
+			"null" (* The return type would be Int, but here we test the type of the core of the method *)
+			(* class A { Int testM() {null} } *)
+			[mk_class "A" [mk_method_e "Int" "testM" [] Null]];
 
 		(*** Static methods ***)
 		build_method_expr_success_test

@@ -16,7 +16,7 @@ class B {
 	}
 }
 class C {
-	Int i = null;
+	Int i;
 	static String s() {
 		"Coucou"
 	}

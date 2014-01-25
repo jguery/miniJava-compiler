@@ -1,0 +1,14 @@
+class A {
+	Int i = null;
+	Int m() {
+		i=4
+	}
+	Int b() {
+		null
+	}
+}
+
+A a = new A in (
+	a.m();
+	a.b()
+)

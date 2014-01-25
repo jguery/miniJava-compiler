@@ -109,12 +109,12 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 			Located.mk_elem ne (Located.loc_of e), type_of_expr ne)
 
 	and type_attr_affect s e =
-		(* TODO check var is an attribute, and not a local var *)
 		let ne = type_expr classname_str static_m classesEnv varEnv e
 		in let tne = type_of_expr ne
 		and ta = get_var_type varEnv (Located.elem_of s) (Located.loc_of s) true
-		in 
-		check_type_is_legal classesEnv (Some ta) (Some tne) (Located.loc_of e);
+		in if (tne <> "null") then begin 
+			check_type_is_legal classesEnv (Some ta) (Some tne) (Located.loc_of e); ()
+		end;
 		TypedAttrAffect(s, Located.mk_elem ne (Located.loc_of e), ta)
 
 	and type_static_method_call c m args =
@@ -190,20 +190,24 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		and return_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c)
 		in let params_vartypes = params_to_vartype classesEnv nparams
 		in let ne = type_expr (Some currentClassEnv.name) static classesEnv ((parse_attributes currentClassEnv.attributes)@params_vartypes) e
-		in
-		check_type_is_legal classesEnv (Some return_type) (Some (type_of_expr ne)) (Located.loc_of e);
+		in let tne = type_of_expr ne
+		in if (tne <> "null") then begin 
+			check_type_is_legal classesEnv (Some return_type) (Some tne) (Located.loc_of e); ()
+		end; 
 		if (static) then TypedStaticMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
 			else TypedMethod(c, s, nparams, Located.mk_elem ne (Located.loc_of e), return_type)
 
 	and type_attr_with_value c s e static =
 		(* Don't use other attributes in the expression of an attribute *)
 		let ne = type_expr (Some currentClassEnv.name) static classesEnv [] e
-		in let tne = (type_of_expr ne)
-		in 
-		check_type_is_legal classesEnv (Some (type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c))) 
-			(Some tne) (Located.loc_of e);
-		if (static) then TypedStaticAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne) 
-			else TypedAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), tne)
+		and return_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c)
+		in let tne = type_of_expr ne
+		in if (tne <> "null") then begin 
+			check_type_is_legal classesEnv (Some (type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c))) 
+				(Some tne) (Located.loc_of e); ()
+		end; 
+		if (static) then TypedStaticAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), return_type) 
+			else TypedAttrWithValue(c, s, Located.mk_elem ne (Located.loc_of e), return_type)
 
 	in let typed_attr_or_method = function
 		| Attr (c, s) -> TypedAttr(c, s, type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c))
