@@ -48,29 +48,42 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 	and type_binop b e1 e2 =
 		let ne1 = type_expr classname_str static_m  classesEnv varEnv e1
 		and ne2 = type_expr classname_str static_m  classesEnv varEnv e2
+		in let tne1 = type_of_expr ne1
+		and tne2 = type_of_expr ne2
 		in let bufType = match (Located.elem_of b) with
-				| Bsemicol -> type_of_expr ne2
-				| Badd | Bsub | Bmul | Bdiv | Bmod -> 
-					check_type_is_legal classesEnv (Some "Int") (Some (type_of_expr ne1)) (Located.loc_of e1);
-					check_type_is_legal classesEnv (Some "Int") (Some (type_of_expr ne2)) (Located.loc_of e2)
-				| Binf | Binfeq | Bsup | Bsupeq ->
-					check_type_is_legal classesEnv (Some "Int") (Some (type_of_expr ne1)) (Located.loc_of e1);
-					check_type_is_legal classesEnv (Some "Int") (Some (type_of_expr ne2)) (Located.loc_of e2);
-					"Boolean"
-				| Bdiff | Beq -> 
-					let t_ne1 = type_of_expr ne1
-					and t_ne2 = type_of_expr ne2
-					in
-					if (t_ne1 = t_ne2 || is_parent classesEnv (Some t_ne1) (Some t_ne2) 
-						|| is_parent classesEnv (Some t_ne2) (Some t_ne1)) then 
-						"Boolean" 
-					else  
-						make_type_error (Some t_ne1) (Some t_ne2) (Located.loc_of e2)
-				| Band | Bor -> 
-					check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ne1)) (Located.loc_of e1);
-					check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ne2)) (Located.loc_of e2)
-		in TypedBinop(b, Located.mk_elem ne1 (Located.loc_of e1), 
-			Located.mk_elem ne2 (Located.loc_of e2), bufType)
+				| Bsemicol -> tne2
+				| Badd | Bsub | Bmul | Bdiv | Bmod -> (match tne1, tne2 with
+					| _, "null" -> raise (PError(NullError, Located.loc_of e2))
+					| "null", _ -> raise (PError(NullError, Located.loc_of e1))
+					| _, _ ->
+						check_type_is_legal classesEnv (Some "Int") (Some tne1) (Located.loc_of e1);
+						check_type_is_legal classesEnv (Some "Int") (Some tne2) (Located.loc_of e2)
+					)
+				| Binf | Binfeq | Bsup | Bsupeq -> (match tne1, tne2 with
+					| _, "null" -> raise (PError(NullError, Located.loc_of e2))
+					| "null", _ -> raise (PError(NullError, Located.loc_of e1))
+					| _, _ ->
+						check_type_is_legal classesEnv (Some "Int") (Some tne1) (Located.loc_of e1);
+						check_type_is_legal classesEnv (Some "Int") (Some tne2) (Located.loc_of e2);
+						"Boolean"
+					)
+				| Bdiff | Beq -> (match tne1, tne2 with
+					| _, "null" | "null", _ -> "Boolean"
+					| _, _ ->
+						if (tne1 = tne2 || is_parent classesEnv (Some tne1) (Some tne2) 
+							|| is_parent classesEnv (Some tne2) (Some tne1)) then 
+							"Boolean" 
+						else  
+							make_type_error (Some tne1) (Some tne2) (Located.loc_of e2)
+					)
+				| Band | Bor -> (match tne1, tne2 with
+					| _, "null" -> raise (PError(NullError, Located.loc_of e2))
+					| "null", _ -> raise (PError(NullError, Located.loc_of e1))
+					| _, _ ->
+						check_type_is_legal classesEnv (Some "Boolean") (Some tne1) (Located.loc_of e1);
+						check_type_is_legal classesEnv (Some "Boolean") (Some tne2) (Located.loc_of e2)
+					)
+		in TypedBinop(b, Located.mk_elem ne1 (Located.loc_of e1), Located.mk_elem ne2 (Located.loc_of e2), bufType)
 
 	and type_condition i t e = 
 		let ni = type_expr classname_str static_m  classesEnv varEnv i 

@@ -577,7 +577,42 @@ let test_binop _ =
 		[{n="b"; t="B"; attr=false; loc=Location.none; static=false;};
 		 {n="a"; t="A"; attr=false; loc=Location.none; static=false;};]
 		(* b == a *)
-		(Binop(mk_none Beq, mk_none (Var (mk_none "b")), mk_none (Var (mk_none "a"))))
+		(Binop(mk_none Beq, mk_none (Var (mk_none "b")), mk_none (Var (mk_none "a"))));
+
+	(* Null tests *)
+	build_failure_test
+		[] []
+		(Binop(mk_none Badd, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Bmul, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Bsupeq, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Bsup, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Binfeq, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Binf, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Bdiv, mk_none (Int (mk_none 1)), mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(Binop(mk_none Band, mk_none (Boolean (mk_none true)), mk_none Null))
+		(Errors.NullError)
+	(* And so on... *)
 
 let test_method_expr _ =
 		(*** Non static methods ***)
