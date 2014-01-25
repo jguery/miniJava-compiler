@@ -8,6 +8,12 @@ type attribute_descriptor = {
 	default: typed_expr Located.t;
 }
 
+type method_descriptor = {
+	static: bool;
+	args_names: string list;
+	core: typed_expr Located.t;
+}
+
 (* 
 	Class descriptor, with:
 	name: name of the class
@@ -17,6 +23,7 @@ type attribute_descriptor = {
 type advanced_class_descriptor = {
 	name: string;	(* 	Name is redundant since a class descriptor is the value of a hash table, 
 						which keys are the names of the classes *)
+	parent: string;	(* We keep this information for casting, at least. *)
 	attributes: (string, attribute_descriptor) Hashtbl.t;
 	methods: (string, string) Hashtbl.t;
 }
@@ -27,12 +34,6 @@ type class_descriptor =
 	| IntClass
 	| BooleanClass
 	| StringClass
-
-type method_descriptor = {
-	static: bool;
-	args_names: string list;
-	core: typed_expr Located.t;
-}
 
 let build_short_method_identifier (m_name: string) (args: string list) =
 	let rec args_str = function

@@ -222,6 +222,29 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		else 
 			eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_else
 
+	and eval_instance_of e classname t =
+		(* Parent and daughter are classes descriptors *)
+		let rec _is_parent parent daughter =
+			match parent, daughter with 
+			| ObjectClass, ObjectClass -> false
+			| ObjectClass, _ -> true
+			| _, ObjectClass -> false
+
+			| _, ClassDescriptor d_cd -> 
+				let daughter_parent_des =  (Hashtbl.find classes_descriptor d_cd.parent)
+				in if (daughter_parent_des = parent) then true else 
+					_is_parent parent daughter_parent_des
+
+			| _, _ -> false (* Things of the sort parent=Int, child=Boolean *)
+
+		in let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e 
+		in let type_e = type_from_object_descriptor (search_heap heap addr_e (Located.loc_of e))
+		in let e_des = Hashtbl.find classes_descriptor type_e
+		and class_des = Hashtbl.find classes_descriptor (string_of_classname (Located.elem_of classname))
+		in let res = (e_des = class_des) || _is_parent class_des e_des
+		in 
+		add_to_heap heap heap_size (BooleanDescriptor (Some res))
+
 	in match Located.elem_of expr with
 	| TypedNull -> -1 (* -1 is the address of null *)
 	| TypedThis t -> Option.get this_addr (* Cannot raise exception because typer already treats the error *)
@@ -238,10 +261,10 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedAttrAffect (attr_name, e, t) -> eval_attr_affect attr_name e t
 	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) -> eval_local apparent_type var_name var_expr sub_expr t
 	| TypedCondition (e_if, e_then, e_else, t) -> eval_condition e_if e_then e_else t
+	| TypedInstanceof (e, classname, t) -> eval_instance_of e classname t
 
 
-(* | TypedCast of classname Located.t * typed_expr Located.t * string
-  | TypedInstanceof of typed_expr Located.t * classname Located.t * string *)
+(* | TypedCast of classname Located.t * typed_expr Located.t * string*)
 
 let eval typed_tree classes_descriptor methods_table = 
 	let heap = Hashtbl.create heap_default_size

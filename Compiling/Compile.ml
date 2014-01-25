@@ -12,7 +12,7 @@ let build_basic_classes_descriptors classes_descriptors =
 	Hashtbl.add classes_descriptors "String" StringClass
 
 
-let add_heritage_structures classes_descriptors methods_table heritage_table =
+let add_heritage_structures classes_descriptors methods_table =
 	let (table_done: (string, bool) Hashtbl.t) = Hashtbl.create 10
 
 	in let merge_attrs parent_desc class_desc =
@@ -40,8 +40,7 @@ let add_heritage_structures classes_descriptors methods_table heritage_table =
 		match class_descriptor with
 		| ClassDescriptor cd -> 
 			if Hashtbl.find table_done class_name <> true then begin
-				let parent = Hashtbl.find heritage_table cd.name
-				in let parent_descriptor = Hashtbl.find classes_descriptors parent
+				let parent_descriptor = Hashtbl.find classes_descriptors cd.parent
 				in
 				Hashtbl.replace table_done cd.name true;
 				merge_attrs parent_descriptor cd;
@@ -95,44 +94,43 @@ let rec build_attrs_and_methods_descriptors class_descriptor methods_table l_met
 (* Change the class environment and add the methods and attributs defined in the classes, but not in their parents.
 	Also, check if parents are defined.
 	We don't check here if names of attributes or methods are not used twice. *)
-let rec build_descriptors_1 classes_descriptors methods_table heritage_table tree =
+let rec build_descriptors_1 classes_descriptors methods_table tree =
 	match tree with
 	| [] -> ()
 	| t::q -> (match Located.elem_of t with 
 			| TypedClassdef (n, l) ->
 				let adv_class_descriptor = {
 					name=Located.elem_of n;
+					parent="Object";
 					attributes=Hashtbl.create 10;
 					methods=Hashtbl.create 10;
 				}
 				in 
 				Hashtbl.add classes_descriptors (Located.elem_of n) (ClassDescriptor(adv_class_descriptor));
-				Hashtbl.add heritage_table (Located.elem_of n) "Object";
 				build_attrs_and_methods_descriptors adv_class_descriptor methods_table l
 
 			| TypedClassdefWithParent (n, p, l) -> 
 				let adv_class_descriptor = {
 					name=Located.elem_of n;
+					parent=string_of_classname (Located.elem_of p);
 					attributes=Hashtbl.create 10;
 					methods=Hashtbl.create 10;
 				}
 				in 
 				Hashtbl.add classes_descriptors (Located.elem_of n) (ClassDescriptor(adv_class_descriptor));
-				Hashtbl.add heritage_table (Located.elem_of n) (string_of_classname (Located.elem_of p));
 				build_attrs_and_methods_descriptors adv_class_descriptor methods_table l
 
 			| _ -> ()
 		);
-		build_descriptors_1 classes_descriptors methods_table heritage_table q
+		build_descriptors_1 classes_descriptors methods_table q
 
 
 let compile tree = 
 	let classes_descriptors = Hashtbl.create 10
 	and methods_table = Hashtbl.create 30
-	and heritage_table = Hashtbl.create 10
 	in
 	build_basic_classes_descriptors classes_descriptors;
-	build_descriptors_1 classes_descriptors methods_table heritage_table tree;
-	add_heritage_structures classes_descriptors methods_table heritage_table;
+	build_descriptors_1 classes_descriptors methods_table tree;
+	add_heritage_structures classes_descriptors methods_table;
 
 	classes_descriptors, methods_table

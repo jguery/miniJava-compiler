@@ -17,6 +17,9 @@ class B {
 }
 class C {
 	Int i;
+	static String s() {
+		"Coucou"
+	}
 	C init() {
 		i=4; this
 	}
@@ -29,6 +32,10 @@ class D extends C {
 	Int m() {
 		i+10
 	}	
+}
+
+class E extends C {
+	
 }
 
 new A
@@ -58,5 +65,10 @@ B b = new B in
 		4
 	}
 B.s()
+C d = new E in
+	d instanceof D // false
+C d = new D in
+	d instanceof D // true
+2 instanceof Boolean // false, of course
 
 // Why the hell are the expressions considered in reverse order ??
