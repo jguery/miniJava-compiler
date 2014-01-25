@@ -274,7 +274,13 @@ let test_method_call _ =
 		(* (new A).m() *)
 		(* Method calls CANNOT be done on static methods *)
 		(MethodCall(mk_none (Instance(mk_none (Classname (mk_none "A")))), mk_none "m", []))
-		(Errors.UndefinedMethod("A", "m", []))
+		(Errors.UndefinedMethod("A", "m", []));
+	build_failure_test
+		[] []
+		(* null.m() *)
+		(* Method calls CANNOT be done on static methods *)
+		(MethodCall(mk_none Null, mk_none "m", []))
+		(Errors.NullError)
 
 let test_instanceof _ = 
 	build_success_test

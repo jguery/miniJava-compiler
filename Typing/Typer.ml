@@ -90,10 +90,14 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 			| [] -> []
 			| t::q -> (type_of_expr (Located.elem_of t))::(type_args q)
 		and ne = type_expr classname_str static_m  classesEnv varEnv e
-		in let classdef = get_classdef classesEnv (type_of_expr ne) (Located.loc_of e)
-		in let nargs = do_l args
-		in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) false (Located.loc_of m) 
-		in TypedMethodCall(Located.mk_elem ne (Located.loc_of e), m, nargs, methoddef.return)
+		in let tne = type_of_expr ne
+		in match tne with
+		| "null" -> raise (PError(NullError, Located.loc_of e))
+		| _ ->
+			let classdef = get_classdef classesEnv tne (Located.loc_of e)
+			in let nargs = do_l args
+			in let methoddef = get_methoddef classdef (Located.elem_of m) (type_args nargs) false (Located.loc_of m) 
+			in TypedMethodCall(Located.mk_elem ne (Located.loc_of e), m, nargs, methoddef.return)
 
 	and type_local_variable c v ve e =
 		let nve = type_expr classname_str static_m  classesEnv varEnv ve
