@@ -14,3 +14,11 @@ A a = new A in (
 )
 
 Int i = if (true) {1} else {null} in i
+
+Boolean i = null in (
+	if (i==null) { // Works, great ! Don't forget to unit test that
+		2
+	} else {
+		3
+	}
+)

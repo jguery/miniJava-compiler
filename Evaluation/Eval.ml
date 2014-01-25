@@ -124,8 +124,12 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			and e2_val = int_value (search_heap heap addr_e2 (Located.loc_of e2))
 			in add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb e1_val e2_val)))
 
-		| Bdiff | Beq -> (
-			match search_heap heap addr_e1 (Located.loc_of e1), search_heap heap addr_e2 (Located.loc_of e2) with
+		| Bdiff | Beq -> 
+			if addr_e1 = addr_e2 then 
+				(* If two objects have the same address, they have to be the same. 
+					This treats stuff like if(i==null) with i being a basic type. *)
+				add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb addr_e1 addr_e2)))
+			else begin match search_heap heap addr_e1 (Located.loc_of e1), search_heap heap addr_e2 (Located.loc_of e2) with
 				(* TODO deal with Int i; Int j; i==j ou i==null; *)
 				| IntDescriptor i, IntDescriptor j -> 
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb i j)))
@@ -135,8 +139,9 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb s ss)))
 				| ObjectDescriptor o1, ObjectDescriptor o2 -> 
 					(* For two objects to be equal, they actually have to be the same object (same address) *)
-					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb addr_e1 addr_e2)))
-			)
+					(* At this stage, we know it's not true, otherwise the first if would have been true *)
+					add_to_heap heap heap_size (BooleanDescriptor (Some false))
+			end
 
 	and _eval_method_call m_this_addr caller_type m_name args t = 
 		let class_des = Hashtbl.find classes_descriptor caller_type
