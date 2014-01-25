@@ -79,7 +79,9 @@ C d = new D in
 C c = new E in 
 	E e = (E)c in ( // objects are passed by reference
 		e.modif(100);
-		c.show_i()
+		c.show_i();
+		e == c; // true
+		c == e // true
 	)
 
 C c = if (true) {
@@ -94,5 +96,7 @@ C c = if (true) {
 // C c = new D in
 // 	E e = (E)c in // raises an error
 // 		e
+
+// (new D) == (new E) // raises an error
 
 // Why the hell are the expressions considered in reverse order ??

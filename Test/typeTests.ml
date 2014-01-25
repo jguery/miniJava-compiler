@@ -508,7 +508,24 @@ let test_binop _ =
 	build_failure_test
 		[] []
 		(Binop(mk_none Beq, mk_none (String (mk_none "foo")), mk_none (Boolean (mk_none true))))
-		(Errors.TypeError("String", "Boolean"))
+		(Errors.TypeError("String", "Boolean"));
+
+	build_success_test
+		"Boolean"
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
+		[{n="b"; t="B"; attr=false; loc=Location.none; static=false;};
+		 {n="a"; t="A"; attr=false; loc=Location.none; static=false;};]
+		(* a == b *)
+		(Binop(mk_none Beq, mk_none (Var (mk_none "a")), mk_none (Var (mk_none "b"))));
+	build_success_test
+		"Boolean"
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[]}; 
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[]}]
+		[{n="b"; t="B"; attr=false; loc=Location.none; static=false;};
+		 {n="a"; t="A"; attr=false; loc=Location.none; static=false;};]
+		(* b == a *)
+		(Binop(mk_none Beq, mk_none (Var (mk_none "b")), mk_none (Var (mk_none "a"))))
 
 let test_method_expr _ =
 		(*** Non static methods ***)

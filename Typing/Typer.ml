@@ -55,8 +55,14 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 					check_type_is_legal classesEnv (Some "Int") (Some (type_of_expr ne2)) (Located.loc_of e2);
 					"Boolean"
 				| Bdiff | Beq -> 
-					check_type_is_legal classesEnv (Some (type_of_expr ne1)) (Some (type_of_expr ne2)) (Located.loc_of e2); 
-					"Boolean"
+					let t_ne1 = type_of_expr ne1
+					and t_ne2 = type_of_expr ne2
+					in
+					if (t_ne1 = t_ne2 || is_parent classesEnv (Some t_ne1) (Some t_ne2) 
+						|| is_parent classesEnv (Some t_ne2) (Some t_ne1)) then 
+						"Boolean" 
+					else  
+						make_type_error (Some t_ne1) (Some t_ne2) (Located.loc_of e2)
 				| Band | Bor -> 
 					check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ne1)) (Located.loc_of e1);
 					check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ne2)) (Located.loc_of e2)
