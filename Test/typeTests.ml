@@ -706,7 +706,12 @@ let test_cast _ =
 		("Int")
 		[] []
 		(* (Int)2 *)
-		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Int (mk_none 2))))
+		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Int (mk_none 2))));
+	build_failure_test
+		[] []
+		(* (Int)null *)
+		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Null)))
+		(Errors.NullError)
 
 let test_is_parent_function _ =
 	assert_equal true (is_parent [] (Some "Object") (Some "Int"));
