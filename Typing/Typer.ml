@@ -36,11 +36,14 @@ let rec params_to_vartype classesEnv nparams = match nparams with
 (* Static_m is true if we are evaluating an expression in a static method. *)
 let rec type_expr classname_str static_m classesEnv varEnv expr = 
 	let type_unop u e = 
-		let ne = type_expr classname_str static_m classesEnv varEnv e in 
-		let bufType = match (Located.elem_of u) with
-				| Udiff -> check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ne)) (Located.loc_of e)
-				| Uminus -> check_type_is_legal classesEnv (Some "Int") (Some (type_of_expr ne)) (Located.loc_of e)
-		in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
+		let ne = type_expr classname_str static_m classesEnv varEnv e 
+		in match type_of_expr ne with
+		| "null" -> raise (PError(NullError, Located.loc_of e))
+		| tne ->
+			let bufType = match (Located.elem_of u) with
+					| Udiff -> check_type_is_legal classesEnv (Some "Boolean") (Some tne) (Located.loc_of e)
+					| Uminus -> check_type_is_legal classesEnv (Some "Int") (Some tne) (Located.loc_of e)
+			in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 
 	and type_binop b e1 e2 =
 		let ne1 = type_expr classname_str static_m  classesEnv varEnv e1

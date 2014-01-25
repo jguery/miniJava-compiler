@@ -114,7 +114,17 @@ let test_unop _ =
 		[] []
 		(* !10 *)
 		(Unop(mk_none Udiff, mk_none (Int (mk_none 10))))
-		(Errors.TypeError("Boolean", "Int"))
+		(Errors.TypeError("Boolean", "Int"));
+	build_failure_test
+		[] []
+		(* !null *)
+		(Unop(mk_none Udiff, mk_none Null))
+		(Errors.NullError);
+	build_failure_test
+		[] []
+		(* -null *)
+		(Unop(mk_none Uminus, mk_none Null))
+		(Errors.NullError)
 
 let test_conditions _ = 
 	build_success_test
