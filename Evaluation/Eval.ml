@@ -137,12 +137,8 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb addr_e1 addr_e2)))
 			)
 
-	and eval_method_call caller m_name args t =
-
-		let addr_caller = eval_expr heap heap_size stack classes_descriptor methods_table this_addr caller
-			(* Caller can't be null *)
-		in let type_caller = type_from_object_descriptor (search_heap heap addr_caller (Located.loc_of caller))
-		in let class_des = Hashtbl.find classes_descriptor type_caller
+	and _eval_method_call m_this_addr caller_type m_name args t = 
+		let class_des = Hashtbl.find classes_descriptor caller_type
 		in let args_types = TypedStructure.types_of_expressions args
 		in let short_id_m = build_short_method_identifier (Located.elem_of m_name) args_types
 		in match class_des with
@@ -163,9 +159,25 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			build_new_stack args method_descriptor.args_names;
 			eval_expr heap heap_size new_stack
 				classes_descriptor methods_table 
-				(Some addr_caller) (* "this" becomes the caller object *)
+				m_this_addr 
 				method_descriptor.core (* Evaluate the expression of the method *)
 		| _ -> -1 (* TODO what if we call a method from a basic type ?? *)
+
+	in let eval_method_call caller m_name args t =
+		let addr_caller = eval_expr heap heap_size stack classes_descriptor methods_table this_addr caller
+			(* Caller can't be null *)
+		in let type_caller = type_from_object_descriptor (search_heap heap addr_caller (Located.loc_of caller))
+		in 
+		_eval_method_call 
+			(Some addr_caller) (* "this" becomes the caller object *)
+			type_caller 
+			m_name args t
+
+	and eval_static_method_call classname m_name args t =
+		_eval_method_call 
+			None (* "this" doesn't exist in a static method *)
+			(string_of_classname (Located.elem_of classname)) 
+			m_name args t
 
 	and eval_var_call var_name t =
 		(* Look for the variable in the stack, and then in the attributes of "this" *)
@@ -221,14 +233,14 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedUnop (u, e, t) -> eval_unop u e t
 	| TypedBinop (b, e1, e2, t) -> eval_binop b e1 e2 t
 	| TypedMethodCall (caller, m_name, args, t) -> eval_method_call caller m_name args t
+	| TypedStaticMethodCall (classname, m_name, args, t) -> eval_static_method_call classname m_name args t
 	| TypedVar (var_name, t) -> eval_var_call var_name t
 	| TypedAttrAffect (attr_name, e, t) -> eval_attr_affect attr_name e t
 	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) -> eval_local apparent_type var_name var_expr sub_expr t
 	| TypedCondition (e_if, e_then, e_else, t) -> eval_condition e_if e_then e_else t
 
 
-(*  | TypedStaticMethodCall of classname Located.t * string Located.t * typed_expr Located.t list * string
-  | TypedCast of classname Located.t * typed_expr Located.t * string
+(* | TypedCast of classname Located.t * typed_expr Located.t * string
   | TypedInstanceof of typed_expr Located.t * classname Located.t * string *)
 
 let eval typed_tree classes_descriptor methods_table = 

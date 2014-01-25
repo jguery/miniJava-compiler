@@ -8,6 +8,9 @@ class A {
 	}
 }
 class B {
+	static String s() {
+		"Wesh!!"
+	}
 	Boolean m(Int i) {
 		i>0
 	}
@@ -54,5 +57,6 @@ B b = new B in
 	} else {
 		4
 	}
+B.s()
 
 // Why the hell are the expressions considered in reverse order ??
