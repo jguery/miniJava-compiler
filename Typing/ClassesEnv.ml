@@ -69,6 +69,42 @@ let rec check_env currentClassesEnv =
 		| [] -> ()
 		| t::q -> Hashtbl.add table_done t.name false; init_table_done q
 
+	in let rec check_circular_extends env = 
+		(* Description of the algorithm: visit each node of the graph and put them in a hash table of already seen nodes.
+			For each pass in the _sub method, we save a current path. If, when passing through the current heritage path,
+			we meet a node that we've seen on the same path, there is a cycle. If we've seen this node already during another
+			call of the _sub function, we stop its execution: this heritage path is sane. A heritage path is also sane when
+			the parent is None (ie, the parent of Object).
+			This analysis is built on the fact that, for a cycle to exist, there must be a portion of the graph that is not
+			at all linked to Object (and thus neither to None) *)
+		let rec _sub current_path visited_before class_def = 
+		(* parent: string option *)
+			try
+				Hashtbl.find current_path class_def.name;
+				(* Found in the current path: cycle *)
+				raise (PError(CircularExtendsError(class_def.name), Location.none))
+			with Not_found ->
+				(* Add current element to the current path *)
+				Hashtbl.add current_path class_def.name true;
+				try
+					Hashtbl.find visited_before class_def.name;
+					() (* This stops looking in the current heritage path *)
+				with Not_found ->
+					match class_def.parent with
+					| None -> ()
+					| Some p -> _sub current_path visited_before (get_classdef currentClassesEnv p (Location.none))
+		in let visited = Hashtbl.create 10
+		in let rec rec_check_circular_extends sub_env = 
+			match sub_env with
+			| [] -> ()
+			| t::q -> 
+				let current_path = Hashtbl.create 10
+				in
+				_sub current_path visited t; 
+				Hashtbl.iter (fun k _ -> Hashtbl.add visited k true) current_path;
+				rec_check_circular_extends q
+		in rec_check_circular_extends env
+
 	in let rec check_attr_names (attrs: varType list) =
 		let rec _rec_check_current current_attr l =
 			match l with 
@@ -160,6 +196,7 @@ let rec check_env currentClassesEnv =
 		| t::q -> check_class_env t; check_classes_env q
 	in
 	init_table_done currentClassesEnv;
+	check_circular_extends currentClassesEnv;
 	check_classes_env currentClassesEnv
 
 
@@ -218,7 +255,7 @@ let rec build_shallow_types_2 currentClassesEnv tree =
 				and parent = (match Located.elem_of t with
 					| Classdef _ -> Some "Object"
 					| ClassdefWithParent (_, p, _) -> Some (type_of_classname currentClassesEnv (Located.elem_of p) (Located.loc_of p))
-				)
+				) 
 				in 
 				classdef.methods <- methods;
 				classdef.attributes <- attrs;

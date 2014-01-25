@@ -180,6 +180,18 @@ let test_class_with_parent _ =
 		[mk_class_p "B" "A" []]
 		(UndefinedType "A");
 
+	(* Two classes being the parent of each other *)
+	build_failure_test
+		(* class B extends A {} class A extends B {} *)
+		[mk_class_p "B" "A" []; mk_class_p "A" "B" []]
+		(CircularExtendsError "A");
+
+	(* Two classes being the parent of each other *)
+	build_failure_test
+		(* class B extends A {} class A extends B {} *)
+		[mk_class_p "A" "C" []; mk_class_p "B" "A" []; mk_class_p "C" "B" []]
+		(CircularExtendsError "C");
+
 	(* Two classes with one being the parent of the other and methods are involved!*)
 	build_success_test
 		(* class A { Boolean m() {..} } class B extends A { Int m2(Int i) {..} } *)

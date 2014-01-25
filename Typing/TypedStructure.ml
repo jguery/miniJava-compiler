@@ -117,12 +117,7 @@ let rec get_methoddef classdef method_string args_types static loc =
 (* Parent and daughter are of type string option *)
 let rec is_parent classesEnv parent daughter =
 	match parent, daughter with 
-	| None, Some "Object" -> true
-	| None, _ -> false
-	| _, None -> false
-	| Some "Object", Some "Object" -> false
-	| Some "Object", Some _ -> true
-	| Some _, Some "Object" -> false
+	| None, _ | _, None -> false
 	| _, Some nd -> 
 		let classdef_daughter = get_classdef classesEnv nd Location.none
 		in if (classdef_daughter.parent = parent) then true else 

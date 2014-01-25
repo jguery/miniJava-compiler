@@ -10,6 +10,7 @@ type error =
 	| IllegalRuntimeCast of string * string
 	| NamingError of string
 	| NullError
+	| CircularExtendsError of string
 
 exception PError of error * Location.t
 
@@ -30,3 +31,4 @@ let string_of_error e =
 	| IllegalRuntimeCast (set, nt) -> "Runtime casting error: Object real type is " ^ set ^ " and cannot be casted to type " ^ nt
 	| NamingError n -> "Naming Error: Object " ^ n ^ " is already defined"
 	| NullError -> "Null Error: Object or expression is null" 
+	| CircularExtendsError s -> "Circular Extends Error: class " ^ s ^ " is involved in a circular extend."

@@ -780,16 +780,17 @@ let test_cast _ =
 		(Errors.NullError)
 
 let test_is_parent_function _ =
-	assert_equal true (is_parent [] (Some "Object") (Some "Int"));
-	assert_equal false (is_parent [] (Some "Int") (Some "Object"));
 	(* class A extends Int {} *)
 	assert_equal true (is_parent [{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
 		(Some "Int") (Some  "A"));
 	(* class A extends Int {} *)
-	assert_equal true (is_parent [{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
+	assert_equal true (is_parent [{name="Object"; parent=None; methods=[]; attributes=[]};
+		{name="Int"; parent=Some "Object"; methods=[]; attributes=[]};
+		{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
 		(Some "Object") (Some "A"));
 	(* class A extends Int {} *)
-	assert_equal false (is_parent [{name="Int";parent=Some "Object";attributes=[];methods=[]};
+	assert_equal false (is_parent [{name="Object"; parent=None; methods=[]; attributes=[]};
+		{name="Int";parent=Some "Object";attributes=[];methods=[]};
 		{name="String";parent=Some "Object";attributes=[];methods=[]};
 		{name="A"; parent=Some "Int"; attributes=[]; methods=[]}] 
 		(Some "String") (Some "A"));
@@ -798,7 +799,8 @@ let test_is_parent_function _ =
 		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] 
 		(Some "A") (Some "B"));
 	(* class A {} class B extends A {} *)
-	assert_equal false (is_parent [{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
+	assert_equal false (is_parent [{name="Object"; parent=None; methods=[]; attributes=[]};
+		{name="A"; parent=Some "Object"; attributes=[]; methods=[]};
 		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] 
 		(Some "B") (Some "A"));
 	(* class A {} class B extends A {} class C extends B {} *)
@@ -807,10 +809,12 @@ let test_is_parent_function _ =
 		{name="C"; parent=Some "B"; attributes=[]; methods=[]}] 
 		(Some "A") (Some "C"));
 	(* class A extends Int {} class B {} *)
-	assert_equal false (is_parent [{name="A"; parent=Some "Int"; attributes=[]; methods=[]};
+	assert_equal false (is_parent [{name="Object"; parent=None; methods=[]; attributes=[]};
+		{name="A"; parent=Some "Int"; attributes=[]; methods=[]};
 		{name="B"; parent=Some "Object"; attributes=[]; methods=[]}] 
 		(Some "Int") (Some "B"));
-	assert_equal false (is_parent [{name="Int";parent=Some "Object";attributes=[];methods=[]};
+	assert_equal false (is_parent [{name="Object"; parent=None; methods=[]; attributes=[]};
+		{name="Int";parent=Some "Object";attributes=[];methods=[]};
 		{name="A"; parent=Some "Int"; attributes=[]; methods=[]};
 		{name="B"; parent=Some "A"; attributes=[]; methods=[]}] (Some "B") (Some "A"))
 
