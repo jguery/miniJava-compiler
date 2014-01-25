@@ -12,3 +12,5 @@ A a = new A in (
 	a.m();
 	a.b()
 )
+
+Int i = if (true) {1} else {null} in i

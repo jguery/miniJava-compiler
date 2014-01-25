@@ -158,7 +158,22 @@ let test_conditions _ =
 		(* if (true) {new B} else {new D} *)
 		(Condition(mk_none (Boolean (mk_none true)), 
 			mk_none (Instance (mk_none (Classname (mk_none "B")))), 
-			mk_none (Instance (mk_none (Classname (mk_none "D"))))))
+			mk_none (Instance (mk_none (Classname (mk_none "D"))))));
+	build_failure_test
+		[] []
+		(* if (null) {2} else {1} *)
+		(Condition(mk_none Null, mk_none (Int (mk_none 2)), mk_none (Int (mk_none 1))))
+		(Errors.NullError);
+	build_success_test
+		"Int"
+		[] []
+		(* if (true) {1} else {null} *)
+		(Condition(mk_none (Boolean (mk_none true)), mk_none (Int (mk_none 1)), mk_none Null));
+	build_success_test
+		"Int"
+		[] []
+		(* if (true) {null} else {1} *)
+		(Condition(mk_none (Boolean (mk_none true)), mk_none Null, mk_none (Int (mk_none 1))))
 
 let test_instance _  =
 	build_success_test

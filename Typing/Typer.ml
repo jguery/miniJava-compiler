@@ -73,13 +73,26 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 		let ni = type_expr classname_str static_m  classesEnv varEnv i 
 		and nt = type_expr classname_str static_m  classesEnv varEnv t 
 		and ne = type_expr classname_str static_m  classesEnv varEnv e 
-		in let common_ancestor = find_lowest_common_ancestor classesEnv (type_of_expr nt) (type_of_expr ne)
-		in
-		check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ni)) (Located.loc_of i);
+		in let tni = type_of_expr ni
+		and tnt = type_of_expr nt
+		and tne = type_of_expr ne
+		in let res_type = match tni with 
+		| "null" -> raise (PError(NullError, Located.loc_of i))
+		| _ -> (match tnt, tne with 
+				| "null", "null" -> "null"
+				| "null", _ -> tne
+				| _, "null" -> tnt
+				| _, _ ->
+					let common_ancestor = find_lowest_common_ancestor classesEnv tnt tne
+					in
+					check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ni)) (Located.loc_of i);
+					common_ancestor
+			)
+		in 
 		TypedCondition(Located.mk_elem ni (Located.loc_of i),
 			Located.mk_elem nt (Located.loc_of t),
 			Located.mk_elem ne (Located.loc_of e),
-			common_ancestor)
+			res_type)
 
 	and type_method_call e m args = 
 		let rec do_l = function 
