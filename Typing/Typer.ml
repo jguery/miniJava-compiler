@@ -102,8 +102,11 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 	and type_local_variable c v ve e =
 		let nve = type_expr classname_str static_m  classesEnv varEnv ve
 		and classname_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
+		in let type_var = match type_of_expr nve with 
+			| "null" -> classname_type
+			| tnve -> check_type_is_legal classesEnv (Some classname_type) (Some tnve) (Located.loc_of ve)
 		in let ne = type_expr classname_str static_m  classesEnv ({
-				t=check_type_is_legal classesEnv (Some classname_type) (Some (type_of_expr nve)) (Located.loc_of ve); 
+				t=type_var; 
 				n=(Located.elem_of v); 
 				attr=false; 
 				static=false;

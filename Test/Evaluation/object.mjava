@@ -6,6 +6,12 @@ class A {
 	Int m2(Int i) {
 		i+j
 	}
+	Int modif(Int p) {
+		j=p
+	}
+	Int get() {
+		j
+	}
 }
 class B {
 	static String s() {
@@ -107,5 +113,40 @@ class TestM {
 }
 
 (new TestM).m((Object)5)
+
+class TestCopy {
+	Int j;
+	Int set(Int i) {
+		j=i
+	}
+	Int modif(Int i) {
+		j=i
+	}
+
+	A a;
+	A setA(A ap) {
+		a = ap
+	}
+	Int modifA(Int i) {
+		a.modif(i)
+	}
+
+}
+
+Int a = 3 in (
+	TestCopy c = new TestCopy in (
+		c.set(a);
+		c.modif(10)
+	);
+	a // a is not modified (doesn't take value of c.j)
+)
+
+A a = new A in (
+	TestCopy c = new TestCopy in (
+		c.setA(a);
+		c.modifA(10000)
+	);
+	a.get() // a is modified !! Thus non basic objects are passed by reference and not copied. Wanted ? I'd say so ...
+)
 
 // Why the hell are the expressions considered in reverse order ??

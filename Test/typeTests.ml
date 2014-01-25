@@ -319,7 +319,13 @@ let test_local_var _ =
 		(* Int i = "foo" in true *)
 		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none (String (mk_none "foo")), 
 			mk_none (Boolean (mk_none true))))
-		(Errors.TypeError("Int", "String"))
+		(Errors.TypeError("Int", "String"));
+	build_success_test
+		"Int"
+		[] []
+		(* Int i = null in i *)
+		(Local(mk_none (Classname (mk_none "Int")), mk_none "i", mk_none Null, 
+			mk_none (Var (mk_none "i"))))
 
 let test_var _ = 
 	build_success_test
