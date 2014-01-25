@@ -16,11 +16,12 @@ class B {
 	}
 }
 class C {
-	Int i;
+	Int i = null;
 	static String s() {
 		"Coucou"
 	}
 	C init() {
+		// i==i;
 		i=4; this
 	}
 	Int m() {
@@ -98,5 +99,13 @@ C c = if (true) {
 // 		e
 
 // (new D) == (new E) // raises an error
+
+class TestM {
+	Int m(Object i) {
+		((Int)i) + 5
+	}
+}
+
+(new TestM).m((Object)5)
 
 // Why the hell are the expressions considered in reverse order ??

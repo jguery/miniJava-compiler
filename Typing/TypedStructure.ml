@@ -181,6 +181,8 @@ let type_of_expr = function
 	| TypedLocal(_, _, _, _, t) | TypedCondition(_, _, _, t) | TypedMethodCall(_, _, _, t) 
 	| TypedStaticMethodCall(_, _, _, t) | TypedInstance(_, t) | TypedCast(_, _, t) 
 	| TypedInstanceof(_, _, t) | TypedThis t -> t 
+		(* Null is a very special case which needs to be treated independtly in most cases *)
+	| TypedNull -> "null"
 
 let rec types_of_expressions = function
 	| [] -> []

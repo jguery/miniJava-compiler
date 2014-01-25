@@ -126,6 +126,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 
 		| Bdiff | Beq -> (
 			match search_heap heap addr_e1 (Located.loc_of e1), search_heap heap addr_e2 (Located.loc_of e2) with
+				(* TODO deal with Int i; Int j; i==j ou i==null; *)
 				| IntDescriptor i, IntDescriptor j -> 
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb i j)))
 				| BooleanDescriptor b, BooleanDescriptor d -> 
@@ -133,7 +134,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 				| StringDescriptor s, StringDescriptor ss -> 
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb s ss)))
 				| ObjectDescriptor o1, ObjectDescriptor o2 -> 
-					(* For two objects to be equal, they actually have to be the same object *)
+					(* For two objects to be equal, they actually have to be the same object (same address) *)
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb addr_e1 addr_e2)))
 			)
 

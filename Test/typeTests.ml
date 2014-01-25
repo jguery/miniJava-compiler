@@ -730,6 +730,20 @@ let test_this _ =
 		(Some "A") false
 		(* This can be used inside a non-static method. *)
 		(This);
+	build_success_test_w_params
+		("Int")
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[{
+			name="m";
+			return="Int";
+			static=false;
+			cl="A";
+			loc=Location.none; 
+			params=[]
+		}];}] 
+		[]
+		(Some "A") false
+		(* this.m() in a non static method. *)
+		(MethodCall(mk_none This, mk_none "m", []));
 	build_failure_test_w_params
 		[] []
 		(Some "A") true
