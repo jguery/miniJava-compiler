@@ -138,13 +138,15 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 		let type_to = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
 		and ne = type_expr classname_str static_m classesEnv varEnv e
 		in let tne = type_of_expr ne
-		in 
-		(* At this stage, casting is authorized if there is a heritage relationship between the two classes. *)
-		if (type_to = tne || is_parent classesEnv (Some type_to) (Some tne) 
-			|| is_parent classesEnv (Some tne) (Some type_to)) then 
-			TypedCast(c, Located.mk_elem ne (Located.loc_of e), type_to)
-		else 
-			raise (PError(IllegalCast(tne, type_to), Located.loc_of e))
+		in match tne with 
+		| "null" -> raise (PError(NullError, Located.loc_of e))
+		| _ ->
+			(* At this stage, casting is authorized if there is a heritage relationship between the two classes. *)
+			if (type_to = tne || is_parent classesEnv (Some type_to) (Some tne) 
+				|| is_parent classesEnv (Some tne) (Some type_to)) then 
+				TypedCast(c, Located.mk_elem ne (Located.loc_of e), type_to)
+			else 
+				raise (PError(IllegalCast(tne, type_to), Located.loc_of e))
 
 	and type_this () = 
 		if (Option.is_none classname_str) || static_m then
