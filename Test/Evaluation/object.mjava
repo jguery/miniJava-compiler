@@ -26,6 +26,9 @@ class C {
 	Int m() {
 		i+1 // Operation on null (if not init), should raise an error from evaluator
 	}
+	Int show_i() {
+		i
+	}
 }
 
 class D extends C {
@@ -35,7 +38,9 @@ class D extends C {
 }
 
 class E extends C {
-	
+	Int modif(Int m) {
+		i = m
+	}
 }
 
 new A
@@ -70,5 +75,24 @@ C d = new E in
 C d = new D in
 	d instanceof D // true
 2 instanceof Boolean // false, of course
+
+C c = new E in 
+	E e = (E)c in ( // objects are passed by reference
+		e.modif(100);
+		c.show_i()
+	)
+
+C c = if (true) {
+	new D 
+} else {
+	new E
+} in (
+	c.init();
+	c.m()
+)
+
+// C c = new D in
+// 	E e = (E)c in // raises an error
+// 		e
 
 // Why the hell are the expressions considered in reverse order ??

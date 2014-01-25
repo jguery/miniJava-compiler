@@ -7,6 +7,7 @@ type error =
 	| UndefinedMethod of string * string * string list
 	| UndefinedObject of string
 	| IllegalCast of string * string
+	| IllegalRuntimeCast of string * string
 	| NamingError of string
 	| NullError
 
@@ -26,5 +27,6 @@ let string_of_error e =
 		^ (string_of_args args) ^ ") of type " ^ t ^ " is undefined"
 	| UndefinedObject s -> "Definition error: Object " ^ s ^ " is undefined"
 	| IllegalCast(set, nt) -> "Casting error: Cannot cast expression of type " ^ set ^ " to type " ^ nt
+	| IllegalRuntimeCast (set, nt) -> "Runtime casting error: Object real type is " ^ set ^ " and cannot be casted to type " ^ nt
 	| NamingError n -> "Naming Error: Object " ^ n ^ " is already defined"
 	| NullError -> "Null Error: Object or expression is null" 

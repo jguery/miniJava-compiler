@@ -64,14 +64,16 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 			Located.mk_elem ne2 (Located.loc_of e2), bufType)
 
 	and type_condition i t e = 
-		let ni = type_expr classname_str static_m  classesEnv varEnv i and
-		nt = type_expr classname_str static_m  classesEnv varEnv t and
-		ne = type_expr classname_str static_m  classesEnv varEnv e in
+		let ni = type_expr classname_str static_m  classesEnv varEnv i 
+		and nt = type_expr classname_str static_m  classesEnv varEnv t 
+		and ne = type_expr classname_str static_m  classesEnv varEnv e 
+		in let common_ancestor = find_lowest_common_ancestor classesEnv (type_of_expr nt) (type_of_expr ne)
+		in
 		check_type_is_legal classesEnv (Some "Boolean") (Some (type_of_expr ni)) (Located.loc_of i);
 		TypedCondition(Located.mk_elem ni (Located.loc_of i),
 			Located.mk_elem nt (Located.loc_of t),
 			Located.mk_elem ne (Located.loc_of e),
-			check_type_is_legal classesEnv (Some (type_of_expr nt)) (Some (type_of_expr ne)) (Located.loc_of e))
+			common_ancestor)
 
 	and type_method_call e m args = 
 		let rec do_l = function 
@@ -127,16 +129,14 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 		and ne = type_expr classname_str static_m classesEnv varEnv e
 		in let tne = type_of_expr ne
 		in 
-		(* Because it is impossible to know at that stage if casting is legal 
-			(because of down casting with parents being one of the basic types),
-		 	every cast is authorized here. *)
-		if (is_parent classesEnv (Some type_to) (Some tne) || is_parent classesEnv (Some tne) (Some type_to)) then 
+		(* At this stage, casting is authorized if there is a heritage relationship between the two classes. *)
+		if (type_to = tne || is_parent classesEnv (Some type_to) (Some tne) 
+			|| is_parent classesEnv (Some tne) (Some type_to)) then 
 			TypedCast(c, Located.mk_elem ne (Located.loc_of e), type_to)
 		else 
 			raise (PError(IllegalCast(tne, type_to), Located.loc_of e))
 
 	and type_this () = 
-		(* TODO: what if we are in a static method ?... *)
 		if (Option.is_none classname_str) || static_m then
 			raise (PError(UndefinedObject("this"), (Located.loc_of expr)))
 		else 

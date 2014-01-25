@@ -128,16 +128,37 @@ let test_conditions _ =
 		(* if (true) {"foo"} else {"bar"} *)
 		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), 
 			mk_none (String (mk_none "bar"))));
-	build_failure_test
+	build_success_test
+		"Object"
 		[] []
 		(* if (true) {"foo"} else {2} *)
-		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), mk_none (Int (mk_none 2))))
-		(Errors.TypeError("String", "Int"));
-	build_failure_test
+		(Condition(mk_none (Boolean (mk_none true)), mk_none (String (mk_none "foo")), mk_none (Int (mk_none 2))));
+	build_success_test
+		"Object"
 		[] []
 		(* if (true) {2} else {"foo"} *)
-		(Condition(mk_none (Boolean (mk_none true)), mk_none (Int (mk_none 2)), mk_none (String (mk_none "foo"))))
-		(Errors.TypeError("Int", "String"))
+		(Condition(mk_none (Boolean (mk_none true)), mk_none (Int (mk_none 2)), mk_none (String (mk_none "foo"))));
+	build_success_test
+		"A" (* Least common ancestor *)
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[];};
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[];};
+		 {name="C"; parent=Some "A"; attributes=[]; methods=[];};] 
+		[]
+		(* if (true) {new B} else {new C} *)
+		(Condition(mk_none (Boolean (mk_none true)), 
+			mk_none (Instance (mk_none (Classname (mk_none "B")))), 
+			mk_none (Instance (mk_none (Classname (mk_none "C"))))));
+	build_success_test
+		"A" (* Least common ancestor *)
+		[{name="A"; parent=Some "Object"; attributes=[]; methods=[];};
+		 {name="B"; parent=Some "A"; attributes=[]; methods=[];};
+		 {name="C"; parent=Some "A"; attributes=[]; methods=[];};
+		 {name="D"; parent=Some "C"; attributes=[]; methods=[];};] 
+		[]
+		(* if (true) {new B} else {new D} *)
+		(Condition(mk_none (Boolean (mk_none true)), 
+			mk_none (Instance (mk_none (Classname (mk_none "B")))), 
+			mk_none (Instance (mk_none (Classname (mk_none "D"))))))
 
 let test_instance _  =
 	build_success_test
@@ -638,7 +659,12 @@ let test_cast _ =
 		[{name="A"; parent=Some "Int"; attributes=[]; methods=[]}]
 		[{n="i"; t="Int"; attr=false; loc=Location.none; static=false;}]
 		(* (A)i *)
-		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "i"))))
+		(Cast(mk_none (Classname (mk_none "A")), mk_none (Var (mk_none "i"))));
+	build_success_test
+		("Int")
+		[] []
+		(* (Int)2 *)
+		(Cast(mk_none (Classname (mk_none "Int")), mk_none (Int (mk_none 2))))
 
 let test_is_parent_function _ =
 	assert_equal true (is_parent [] (Some "Object") (Some "Int"));

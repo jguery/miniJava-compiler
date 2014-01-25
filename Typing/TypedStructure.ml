@@ -130,6 +130,22 @@ let rec is_parent classesEnv parent daughter =
 				raises an error. The error would have been signaled when building the classes environment *)
 			is_parent classesEnv parent classdef_daughter.parent
 
+let rec find_lowest_common_ancestor classesEnv c1 c2 = 
+	match c1, c2 with
+	| "Object", "Object" -> "Object"
+	| n1, n2 when n1 = n2 -> n1
+	| n1, n2 ->
+		let classdef_1 = get_classdef classesEnv n1 Location.none
+		and classdef_2 = get_classdef classesEnv n2 Location.none
+		in if classdef_1.parent = classdef_2.parent then 
+			Option.get classdef_1.parent
+		else if is_parent classesEnv (Some c1) (Some c2)  then
+			n1
+		else if is_parent classesEnv (Some c2) (Some c1) then 
+			n2
+		else 
+			find_lowest_common_ancestor classesEnv (Option.get classdef_1.parent) (Option.get classdef_2.parent)
+
 
 (* This method makes sure the expected type is either the real type, or a parent of the real type *)
 (* exp and real are of type string option *)

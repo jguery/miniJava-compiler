@@ -222,28 +222,41 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		else 
 			eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_else
 
-	and eval_instance_of e classname t =
+	in let rec _is_parent parent daughter =
 		(* Parent and daughter are classes descriptors *)
-		let rec _is_parent parent daughter =
-			match parent, daughter with 
-			| ObjectClass, ObjectClass -> false
-			| ObjectClass, _ -> true
-			| _, ObjectClass -> false
+		match parent, daughter with 
+		| ObjectClass, ObjectClass -> false
+		| ObjectClass, _ -> true
+		| _, ObjectClass -> false
 
-			| _, ClassDescriptor d_cd -> 
-				let daughter_parent_des =  (Hashtbl.find classes_descriptor d_cd.parent)
-				in if (daughter_parent_des = parent) then true else 
-					_is_parent parent daughter_parent_des
+		| _, ClassDescriptor d_cd -> 
+			let daughter_parent_des =  (Hashtbl.find classes_descriptor d_cd.parent)
+			in if (daughter_parent_des = parent) then true else 
+				_is_parent parent daughter_parent_des
 
-			| _, _ -> false (* Things of the sort parent=Int, child=Boolean *)
+		| _, _ -> false (* Things of the sort parent=Int, child=Boolean *)
 
-		in let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e 
+	in let eval_instance_of e classname t =
+		let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e 
 		in let type_e = type_from_object_descriptor (search_heap heap addr_e (Located.loc_of e))
 		in let e_des = Hashtbl.find classes_descriptor type_e
 		and class_des = Hashtbl.find classes_descriptor (string_of_classname (Located.elem_of classname))
 		in let res = (e_des = class_des) || _is_parent class_des e_des
 		in 
 		add_to_heap heap heap_size (BooleanDescriptor (Some res))
+
+	and eval_cast classname e t =
+		let type_to = string_of_classname (Located.elem_of classname)
+		in let des_type_to = Hashtbl.find classes_descriptor type_to
+		in let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e 
+		in let type_e = type_from_object_descriptor (search_heap heap addr_e (Located.loc_of e))
+		in let des_e = Hashtbl.find classes_descriptor type_e
+		in 
+		if (type_to = type_e || _is_parent des_type_to des_e || _is_parent des_e des_type_to) then 
+			(* We never actually change the value of the object *)
+			addr_e
+		else 
+			raise (PError(IllegalRuntimeCast(type_e, type_to), Located.loc_of e))
 
 	in match Located.elem_of expr with
 	| TypedNull -> -1 (* -1 is the address of null *)
@@ -262,6 +275,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedLocal (apparent_type, var_name, var_expr, sub_expr, t) -> eval_local apparent_type var_name var_expr sub_expr t
 	| TypedCondition (e_if, e_then, e_else, t) -> eval_condition e_if e_then e_else t
 	| TypedInstanceof (e, classname, t) -> eval_instance_of e classname t
+	| TypedCast (classname, e, t) -> eval_cast classname e t
 
 
 (* | TypedCast of classname Located.t * typed_expr Located.t * string*)
