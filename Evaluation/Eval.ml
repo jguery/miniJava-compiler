@@ -71,6 +71,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		in match class_descriptor with
 		| ClassDescriptor descriptor -> ObjectDescriptor({ 
 				t = descriptor.name;
+				(* Instantiate the attributes of the object with their default values *)
 				attrs_values = (let a = Hashtbl.create 10 in Hashtbl.iter (create_new_hashtable a) descriptor.attributes; a);
 			})
 		| IntClass -> IntDescriptor None

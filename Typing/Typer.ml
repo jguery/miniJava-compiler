@@ -34,9 +34,9 @@ let rec params_to_vartype classesEnv nparams = match nparams with
 (* This function receives an expr and returns a non-located typed_expr *)
 (* Classname_str is the name of the class the expression is in, if any. *)
 (* Static_m is true if we are evaluating an expression in a static method. *)
-let rec type_expr classname_str static_m classesEnv varEnv expr = 
+let rec type_expr classname_str use_this_ptr classesEnv varEnv expr = 
 	let type_unop u e = 
-		let ne = type_expr classname_str static_m classesEnv varEnv e 
+		let ne = type_expr classname_str use_this_ptr classesEnv varEnv e 
 		in match type_of_expr ne with
 		| "null" -> raise (PError(NullError, Located.loc_of e))
 		| tne ->
@@ -46,8 +46,8 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 			in TypedUnop(u, Located.mk_elem ne (Located.loc_of e), bufType)
 
 	and type_binop b e1 e2 =
-		let ne1 = type_expr classname_str static_m  classesEnv varEnv e1
-		and ne2 = type_expr classname_str static_m  classesEnv varEnv e2
+		let ne1 = type_expr classname_str use_this_ptr classesEnv varEnv e1
+		and ne2 = type_expr classname_str use_this_ptr classesEnv varEnv e2
 		in let tne1 = type_of_expr ne1
 		and tne2 = type_of_expr ne2
 		in let bufType = match (Located.elem_of b) with
@@ -86,9 +86,9 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 		in TypedBinop(b, Located.mk_elem ne1 (Located.loc_of e1), Located.mk_elem ne2 (Located.loc_of e2), bufType)
 
 	and type_condition i t e = 
-		let ni = type_expr classname_str static_m  classesEnv varEnv i 
-		and nt = type_expr classname_str static_m  classesEnv varEnv t 
-		and ne = type_expr classname_str static_m  classesEnv varEnv e 
+		let ni = type_expr classname_str use_this_ptr classesEnv varEnv i 
+		and nt = type_expr classname_str use_this_ptr classesEnv varEnv t 
+		and ne = type_expr classname_str use_this_ptr classesEnv varEnv e 
 		in let tni = type_of_expr ni
 		and tnt = type_of_expr nt
 		and tne = type_of_expr ne
@@ -113,12 +113,12 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 	and type_method_call e m args = 
 		let rec do_l = function 
 			| [] -> []
-			| t::q -> (Located.mk_elem (type_expr classname_str static_m  classesEnv varEnv t) 
+			| t::q -> (Located.mk_elem (type_expr classname_str use_this_ptr classesEnv varEnv t) 
 				(Located.loc_of t))::(do_l q)
 		and type_args = function
 			| [] -> []
 			| t::q -> (type_of_expr (Located.elem_of t))::(type_args q)
-		and ne = type_expr classname_str static_m  classesEnv varEnv e
+		and ne = type_expr classname_str use_this_ptr classesEnv varEnv e
 		in let tne = type_of_expr ne
 		in match tne with
 		| "null" -> raise (PError(NullError, Located.loc_of e))
@@ -129,12 +129,12 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 			in TypedMethodCall(Located.mk_elem ne (Located.loc_of e), m, nargs, methoddef.return)
 
 	and type_local_variable c v ve e =
-		let nve = type_expr classname_str static_m  classesEnv varEnv ve
+		let nve = type_expr classname_str use_this_ptr classesEnv varEnv ve
 		and classname_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
 		in let type_var = match type_of_expr nve with 
 			| "null" -> classname_type
 			| tnve -> check_type_is_legal classesEnv (Some classname_type) (Some tnve) (Located.loc_of ve)
-		in let ne = type_expr classname_str static_m  classesEnv ({
+		in let ne = type_expr classname_str use_this_ptr classesEnv ({
 				t=type_var; 
 				n=(Located.elem_of v); 
 				attr=false; 
@@ -145,7 +145,7 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 			Located.mk_elem ne (Located.loc_of e), type_of_expr ne)
 
 	and type_attr_affect s e =
-		let ne = type_expr classname_str static_m classesEnv varEnv e
+		let ne = type_expr classname_str use_this_ptr classesEnv varEnv e
 		in let tne = type_of_expr ne
 		and ta = get_var_type varEnv (Located.elem_of s) (Located.loc_of s) true
 		in if (tne <> "null") then begin 
@@ -156,7 +156,7 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 	and type_static_method_call c m args =
 		let rec do_l = function 
 			| [] -> []
-			| t::q -> (Located.mk_elem (type_expr classname_str static_m  classesEnv varEnv t) 
+			| t::q -> (Located.mk_elem (type_expr classname_str use_this_ptr  classesEnv varEnv t) 
 				(Located.loc_of t))::(do_l q)
 		and type_args = function
 			| [] -> []
@@ -168,7 +168,7 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 
 	and type_cast c e =
 		let type_to = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c) 
-		and ne = type_expr classname_str static_m classesEnv varEnv e
+		and ne = type_expr classname_str use_this_ptr classesEnv varEnv e
 		in let tne = type_of_expr ne
 		in match tne with 
 		| "null" -> raise (PError(NullError, Located.loc_of e))
@@ -181,13 +181,13 @@ let rec type_expr classname_str static_m classesEnv varEnv expr =
 				raise (PError(IllegalCast(tne, type_to), Located.loc_of e))
 
 	and type_this () = 
-		if (Option.is_none classname_str) || static_m then
+		if not use_this_ptr then
 			raise (PError(UndefinedObject("this"), (Located.loc_of expr)))
 		else 
 			TypedThis (Option.get classname_str)
 
 	and type_instanceof e c =
-		let ne = type_expr classname_str static_m classesEnv varEnv e
+		let ne = type_expr classname_str use_this_ptr classesEnv varEnv e
 		in match type_of_expr ne with
 		| "null" -> raise (PError(NullError, Located.loc_of e))
 		| _ -> TypedInstanceof(Located.mk_elem ne (Located.loc_of e), c, "Boolean")
@@ -232,7 +232,7 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 		in let nparams = type_params_list classesEnv params
 		and return_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c)
 		in let params_vartypes = params_to_vartype classesEnv nparams
-		in let ne = type_expr (Some currentClassEnv.name) static classesEnv ((parse_attributes currentClassEnv.attributes)@params_vartypes) e
+		in let ne = type_expr (Some currentClassEnv.name) (not static) classesEnv ((parse_attributes currentClassEnv.attributes)@params_vartypes) e
 		in let tne = type_of_expr ne
 		in if (tne <> "null") then begin 
 			check_type_is_legal classesEnv (Some return_type) (Some tne) (Located.loc_of e); ()
@@ -242,7 +242,7 @@ let rec type_attr_or_method_list classesEnv currentClassEnv l =
 
 	and type_attr_with_value c s e static =
 		(* Don't use other attributes in the expression of an attribute *)
-		let ne = type_expr (Some currentClassEnv.name) static classesEnv [] e
+		let ne = type_expr (Some currentClassEnv.name) false classesEnv [] e
 		and return_type = type_of_classname classesEnv (Located.elem_of c) (Located.loc_of c)
 		in let tne = type_of_expr ne
 		in if (tne <> "null") then begin 

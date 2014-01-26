@@ -1,5 +1,6 @@
 class A {
 	Int j=1;
+	//Boolean b=((this.m2(2))>2); //error on that
 	Boolean m(Int i) {
 		(new B).m(i-j)
 	}
@@ -148,5 +149,32 @@ A a = new A in (
 	);
 	a.get() // a is modified !! Thus non basic objects are passed by reference and not copied. Wanted ? I'd say so ...
 )
+
+class F {
+	Int i=4;
+	Int m(Int i) {
+		i
+	}
+	Int createG() {
+		G g = new G in 
+			g.get()
+	}
+	static Int s() {
+		88
+	}
+}
+
+class G {
+	Int b=(F.s());
+	Int m(Int i) {
+		0
+	}
+	Int get() {
+		b
+	}
+}
+
+F f = new F in 
+	f.createG()	// result: 10
 
 // Why the hell are the expressions considered in reverse order ??
