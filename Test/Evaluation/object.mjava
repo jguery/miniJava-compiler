@@ -177,5 +177,3 @@ class G {
 
 F f = new F in 
 	f.m(2)	// result: 10
-
-// Why the hell are the expressions considered in reverse order ??

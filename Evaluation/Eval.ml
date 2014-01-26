@@ -63,7 +63,9 @@ let build_static_attr_id classname attr_name =
 (* Heap is a hash table with keys being addresses (mere integers) and values are object descriptors *)
 (* Heap_size is the current size of the heap, to get the last free address in the hash table *)
 (* Stack is a final hash table with key: name of a local object (variable/attribute), value: address in the heap *)
+(* Static_attrs is a hash table with key: id of a static addr (see build_static_attr_id), value: address in the heap of the result *)
 (* Classes_descriptor is the output of the compiling process, it is a hash table containing the descriptions of classes *)
+(* Classname_str is the name of the class the expression is from, or None if we are not in a class *)
 (* This_addr is the address in the heap of the current object we are evaluating (if we are in a non static method core) *)
 (* The expression is a located typed expression *)
 let rec eval_expr heap heap_size stack static_attrs classes_descriptor methods_table (classname_str: string option) (this_addr: int option) expr = 
@@ -330,9 +332,9 @@ let eval typed_tree classes_descriptor methods_table =
 		| [] -> []
 		| t::q -> (match Located.elem_of t with
 					(* If this is a primitive type, give the value, otherwise give the address (strings in both cases) *)
-				| TypedExpr e -> (string_of_evaluated_expr heap 
-						(eval_expr heap heap_size (Hashtbl.create 0) static_attrs classes_descriptor methods_table None None e))
-					::(rec_eval q)
+				| TypedExpr e -> 
+					let addr_e = eval_expr heap heap_size (Hashtbl.create 0) static_attrs classes_descriptor methods_table None None e
+					in (string_of_evaluated_expr heap addr_e)::(rec_eval q)
 					(* We don't evaluate classes, only expressions *)
 				| _ -> rec_eval q
 			)

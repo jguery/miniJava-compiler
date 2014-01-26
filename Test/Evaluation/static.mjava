@@ -3,12 +3,14 @@ class A {
 	Int init() {
 		i = 10
 	}
-	Int add(Int j) {
+	static Int add(Int j) {
 		i + j
 	}
 }
 
 A a = new A in (
 	a.init();
-	a.add(5)
+	A.add(5)
 )
+A a = new A in 
+	A.add(2) // We NEED to evaluate in the correct order !!
