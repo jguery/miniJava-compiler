@@ -55,6 +55,10 @@ let search_heap heap addr loc =
 	else
 		Hashtbl.find heap addr
 
+let build_static_attr_id classname attr_name = 
+	(* TODO change that *)
+	classname ^ attr_name
+
 (* Evaluate an expression *)
 (* Heap is a hash table with keys being addresses (mere integers) and values are object descriptors *)
 (* Heap_size is the current size of the heap, to get the last free address in the hash table *)
@@ -62,12 +66,14 @@ let search_heap heap addr loc =
 (* Classes_descriptor is the output of the compiling process, it is a hash table containing the descriptions of classes *)
 (* This_addr is the address in the heap of the current object we are evaluating (if we are in a non static method core) *)
 (* The expression is a located typed expression *)
-let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_addr: int option) expr = 
+let rec eval_expr heap heap_size stack static_attrs classes_descriptor methods_table (classname_str: string option) (this_addr: int option) expr = 
 
 	let create_new_default_object_descriptor (class_descriptor: CompileStructures.class_descriptor) = 
-		(* TODO what to do with static attrs ? *)
-		let create_new_hashtable newhash k v =
-			Hashtbl.add newhash k (eval_expr heap heap_size stack classes_descriptor methods_table None v.default)
+		let create_new_hashtable newhash k (v: attribute_descriptor) =
+			(* We only care for non static attributes *)
+			match v.static with 
+			| false -> Hashtbl.add newhash k (eval_expr heap heap_size stack static_attrs classes_descriptor methods_table None None v.default)
+			| true -> ()
 		in match class_descriptor with
 		| ClassDescriptor descriptor -> ObjectDescriptor({ 
 				t = descriptor.name;
@@ -79,7 +85,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		| StringClass -> StringDescriptor None
 
 	in let eval_unop u e t = 
-		let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e
+		let addr_e = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e
 		in match Located.elem_of u with 
 		| Udiff -> 
 			let e_val = bool_value (search_heap heap addr_e (Located.loc_of e))
@@ -96,8 +102,8 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			| Binfeq -> a <= b
 			| Bsup -> a > b
 			| Bsupeq -> a >= b
-		in let addr_e1 = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e1
-		and addr_e2 = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e2
+		in let addr_e1 = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e1
+		and addr_e2 = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e2
 		and nb = Located.elem_of b
 		in match nb with
 		| Bsemicol -> addr_e2
@@ -157,21 +163,21 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 				match args_left, names_left with
 				| [], [] -> ()
 				| e::q, n::q2 -> 
-					let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e
+					let addr_e = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e
 					in 
 					(* Add to the new stack the argument, with the correct name and the link to the right address in the heap. *)
 					Hashtbl.add new_stack n addr_e;
 					build_new_stack q q2
 			in 
 			build_new_stack args method_descriptor.args_names;
-			eval_expr heap heap_size new_stack
+			eval_expr heap heap_size new_stack static_attrs
 				classes_descriptor methods_table 
-				m_this_addr 
+				(Some caller_type) m_this_addr 
 				method_descriptor.core (* Evaluate the expression of the method *)
 		| _ -> -1 (* TODO what if we call a method from a basic type ?? *)
 
 	in let eval_method_call caller m_name args t =
-		let addr_caller = eval_expr heap heap_size stack classes_descriptor methods_table this_addr caller
+		let addr_caller = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr caller
 			(* Caller can't be null *)
 		in let type_caller = type_from_object_descriptor (search_heap heap addr_caller (Located.loc_of caller))
 		in 
@@ -187,47 +193,62 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 			m_name args t
 
 	and eval_var_call var_name t =
-		(* Look for the variable in the stack, and then in the attributes of "this" *)
+		(* Look for the variable in the stack, in the static_attrs, and then in the attributes of "this" *)
 		(* The variable MUST exist in one of those places, otherwise the typer would have raised an exception earlier *)
 		try
 			Hashtbl.find stack (Located.elem_of var_name)
 		with Not_found ->
-			(* Variable HAS to be an attribute, thanks to the typer. Thus, Option.get cannot throw an exception. *)
-			let object_descriptor = Hashtbl.find heap (Option.get this_addr)
-			in match object_descriptor with
-			| ObjectDescriptor od -> Hashtbl.find od.attrs_values (Located.elem_of var_name)
-			| _ -> -1 (* TODO really can't happen ? *)
+			try
+				(* It could be a static attribute *)
+				let static_attr_id = build_static_attr_id (Option.get classname_str) (Located.elem_of var_name)
+				in Hashtbl.find static_attrs static_attr_id
+			with Not_found ->
+				(* It is a non static attribute *)
+				let object_descriptor = Hashtbl.find heap (Option.get this_addr)
+				in match object_descriptor with
+				| ObjectDescriptor od -> Hashtbl.find od.attrs_values (Located.elem_of var_name)
+				| _ -> -1 (* This cannot be refering to a basic type (so far) *)
 
 	and eval_attr_affect attr_name e t =
-		(* Variable HAS to be an attribute, thanks to the typer. Thus, Option.get cannot throw an exception. *)
-		let object_descriptor = Hashtbl.find heap (Option.get this_addr)
-		in match object_descriptor with
-		| ObjectDescriptor od ->
-			let new_attr_addr = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e
-			in 
+		let modif_heap table id = 
+			let new_attr_addr = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e
+			in
 			(* We should replace the object in the heap with the new value of the attribute, 
-				but because of how eval_expr works, it is easier to just move the address of 
-				the value of the attribute. Not so memory efficient... *)
-			Hashtbl.replace od.attrs_values (Located.elem_of attr_name) new_attr_addr;
+					but because of how eval_expr works, it is easier to just move the address of 
+					the value of the attribute. Not so memory efficient... *)
+			Hashtbl.replace table id new_attr_addr;
 			new_attr_addr
-		| _ -> -1 (* TODO really can't happen ? *)
+		in try
+			let static_attr_id = build_static_attr_id (Option.get classname_str) (Located.elem_of attr_name)
+			in 
+			(* Make this call so that not found is raised if the attribute is not static *)
+			Hashtbl.find static_attrs static_attr_id; 
+			modif_heap static_attrs static_attr_id
+		with Not_found ->
+			(* Variable HAS to be an attribute, thanks to the typer. Thus, Option.get cannot throw an exception. *)
+			let this_descriptor = Hashtbl.find heap (Option.get this_addr)
+			in match this_descriptor with
+			| ObjectDescriptor od ->
+				let new_attr_addr = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e
+				in modif_heap od.attrs_values (Located.elem_of attr_name)
+			| _ -> -1 (* This cannot refer to a basic type, can't happen *)
 
 	and eval_local apparent_type var_name var_expr sub_expr t =
 		(* The apparent type was really just used in the typer. We only care here about the real type. *)
-		let var_addr = eval_expr heap heap_size stack classes_descriptor methods_table this_addr var_expr
+		let var_addr = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr var_expr
 		in let new_stack = Hashtbl.copy stack
 		in 
 		Hashtbl.add new_stack (Located.elem_of var_name) var_addr;
-		eval_expr heap heap_size new_stack classes_descriptor methods_table this_addr sub_expr
+		eval_expr heap heap_size new_stack static_attrs classes_descriptor methods_table classname_str this_addr sub_expr
  
 	and eval_condition e_if e_then e_else t =
-		let addr_e_if = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_if
+		let addr_e_if = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e_if
 		in let val_e_if = bool_value (search_heap heap addr_e_if (Located.loc_of e_if))
 		in 
 		if val_e_if then 
-			eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_then
+			eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e_then
 		else 
-			eval_expr heap heap_size stack classes_descriptor methods_table this_addr e_else
+			eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e_else
 
 	in let rec _is_parent parent daughter =
 		(* Parent and daughter are classes descriptors *)
@@ -244,7 +265,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 		| _, _ -> false (* Things of the sort parent=Int, child=Boolean *)
 
 	in let eval_instance_of e classname t =
-		let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e 
+		let addr_e = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e 
 		in let type_e = type_from_object_descriptor (search_heap heap addr_e (Located.loc_of e))
 		in let e_des = Hashtbl.find classes_descriptor type_e
 		and class_des = Hashtbl.find classes_descriptor (string_of_classname (Located.elem_of classname))
@@ -255,7 +276,7 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	and eval_cast classname e t =
 		let type_to = string_of_classname (Located.elem_of classname)
 		in let des_type_to = Hashtbl.find classes_descriptor type_to
-		in let addr_e = eval_expr heap heap_size stack classes_descriptor methods_table this_addr e 
+		in let addr_e = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e 
 		in let type_e = type_from_object_descriptor (search_heap heap addr_e (Located.loc_of e))
 		in let des_e = Hashtbl.find classes_descriptor type_e
 		in 
@@ -285,17 +306,32 @@ let rec eval_expr heap heap_size stack classes_descriptor methods_table (this_ad
 	| TypedCast (classname, e, t) -> eval_cast classname e t
 
 
-(* | TypedCast of classname Located.t * typed_expr Located.t * string*)
+let build_static_attrs heap heap_size classes_descriptor methods_table =
+	let static_attrs = Hashtbl.create 10
+	in let iterate k v = 
+		let iter_attr ka (va: attribute_descriptor) = match va.static with
+			| true -> Hashtbl.add static_attrs 
+				(build_static_attr_id k ka) 
+				(eval_expr heap heap_size (Hashtbl.create 0) (Hashtbl.create 0) classes_descriptor methods_table None None va.default)
+			| false -> ()
+		in match v with
+		| ClassDescriptor cd -> Hashtbl.iter iter_attr cd.attributes
+		| _ -> ()
+	in 
+	Hashtbl.iter iterate classes_descriptor;
+	static_attrs
 
 let eval typed_tree classes_descriptor methods_table = 
 	let heap = Hashtbl.create heap_default_size
 	and heap_size = ref 0
+	in let static_attrs = build_static_attrs heap heap_size classes_descriptor methods_table 
 	in let rec rec_eval sub_tree =
 		match sub_tree with
 		| [] -> []
 		| t::q -> (match Located.elem_of t with
 					(* If this is a primitive type, give the value, otherwise give the address (strings in both cases) *)
-				| TypedExpr e -> (string_of_evaluated_expr heap (eval_expr heap heap_size (Hashtbl.create 0) classes_descriptor methods_table None e))
+				| TypedExpr e -> (string_of_evaluated_expr heap 
+						(eval_expr heap heap_size (Hashtbl.create 0) static_attrs classes_descriptor methods_table None None e))
 					::(rec_eval q)
 					(* We don't evaluate classes, only expressions *)
 				| _ -> rec_eval q

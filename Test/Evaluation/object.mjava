@@ -151,16 +151,17 @@ A a = new A in (
 )
 
 class F {
+	static Int j=8;
 	Int i=4;
 	Int m(Int i) {
-		i
+		i+j // i is the argument
 	}
 	Int createG() {
 		G g = new G in 
 			g.get()
 	}
 	static Int s() {
-		88
+		j
 	}
 }
 
@@ -175,6 +176,6 @@ class G {
 }
 
 F f = new F in 
-	f.createG()	// result: 10
+	f.m(2)	// result: 10
 
 // Why the hell are the expressions considered in reverse order ??
