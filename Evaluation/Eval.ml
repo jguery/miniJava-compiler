@@ -56,8 +56,7 @@ let search_heap heap addr loc =
 		Hashtbl.find heap addr
 
 let build_static_attr_id classname attr_name = 
-	(* TODO change that *)
-	classname ^ attr_name
+	classname ^ "," ^ attr_name
 
 (* Evaluate an expression *)
 (* Heap is a hash table with keys being addresses (mere integers) and values are object descriptors *)
@@ -216,8 +215,9 @@ let rec eval_expr heap heap_size stack static_attrs classes_descriptor methods_t
 			let new_attr_addr = eval_expr heap heap_size stack static_attrs classes_descriptor methods_table classname_str this_addr e
 			in
 			(* We should replace the object in the heap with the new value of the attribute, 
-					but because of how eval_expr works, it is easier to just move the address of 
-					the value of the attribute. Not so memory efficient... *)
+				but because of how eval_expr works, it is easier to just move the address of 
+				the value of the attribute. Not so memory efficient... 
+				Yet, we don't know if the address was used by someone else, so we can't do that *)
 			Hashtbl.replace table id new_attr_addr;
 			new_attr_addr
 		in try
