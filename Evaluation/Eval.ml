@@ -301,6 +301,8 @@ let rec eval_expr heap heap_size stack static_attrs classes_descriptor methods_t
 	| TypedCast (classname, e, t) -> eval_cast classname e t
 
 
+(* Retuens an environment for static attributes. It is actually a hash table with key: static attribute ID, and
+	value: address of the current value in the heap. *)
 let build_static_attrs heap heap_size classes_descriptor methods_table =
 	let static_attrs = Hashtbl.create 10
 	in let iterate k v = 
