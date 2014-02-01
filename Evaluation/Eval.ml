@@ -10,17 +10,11 @@ open Errors
 
 let heap_default_size = 20
 
-(* Use a stack and a heap *)
-
 let rec string_of_evaluated_expr (heap:(int, object_descriptor) Hashtbl.t) evaluated_expr_addr = 
 	if evaluated_expr_addr >= 0 then begin
 		let object_descriptor = (Hashtbl.find heap evaluated_expr_addr)
 		in match object_descriptor with 
-		| ObjectDescriptor od -> (match od.t with 
-				(* TODO use this more !... *)
-				| "String" -> "str"
-				| _ -> "<Object " ^ od.t ^ " Address " ^ (string_of_int evaluated_expr_addr) ^ ">"
-			)	
+		| ObjectDescriptor od -> "<Object " ^ od.t ^ " Address " ^ (string_of_int evaluated_expr_addr) ^ ">"
 		| IntDescriptor i -> if (Option.is_none i) then "Null" else string_of_int (Option.get i)
 		| BooleanDescriptor b -> if (Option.is_none b) then "Null" else string_of_bool (Option.get b)
 		| StringDescriptor s -> if (Option.is_none s) then "Null" else Option.get s
@@ -138,7 +132,6 @@ let rec eval_expr heap heap_size stack static_attrs classes_descriptor methods_t
 					This treats stuff like if(i==null) with i being a basic type. *)
 				add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb addr_e1 addr_e2)))
 			else begin match search_heap heap addr_e1 (Located.loc_of e1), search_heap heap addr_e2 (Located.loc_of e2) with
-				(* TODO deal with Int i; Int j; i==j ou i==null; *)
 				| IntDescriptor i, IntDescriptor j -> 
 					add_to_heap heap heap_size (BooleanDescriptor (Some (eval_bool_binop nb i j)))
 				| BooleanDescriptor b, BooleanDescriptor d -> 
