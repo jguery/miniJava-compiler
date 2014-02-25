@@ -14,7 +14,7 @@ type methodType = {
 	name : string;
 	mutable return : string;
 	static : bool;
-	mutable cl : string;  (* TODO remove this: no use in the typer *) (* Class the method belongs to. Can change in case of redefinition *)
+	mutable cl : string;  (* Class the method belongs to. Can change in case of redefinition *)
 	params : string list;
 	loc: Location.t;
 }

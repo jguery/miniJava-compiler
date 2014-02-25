@@ -8,15 +8,20 @@ let execute lexbuf verbose =
   try
   	(* Build the data structure *)
     let l = Parser.structure_tree nexttoken lexbuf in
-      (* Print a string-ed version of our data structure *)
-      print_string (string_of_structure_tree l);
-      print_newline();
+
+      if verbose then begin 
+        (* Print a string-ed version of our data structure *)
+        print_string (string_of_structure_tree l);
+        print_newline();
+      end;
 
       let t_l = Typer.type_structure_tree l in
 
-  	    print_endline ("Type :");
-  	    print_string (string_of_expr_types (type_of_structure_tree t_l));
-  	   	print_newline();
+        if verbose then begin 
+    	    print_endline ("Type :");
+    	    print_string (string_of_expr_types (type_of_structure_tree t_l));
+    	   	print_newline();
+        end;
 
         let classes_descriptor, methods_table = Compile.compile t_l in
         let evaluation = Eval.eval t_l classes_descriptor methods_table in
