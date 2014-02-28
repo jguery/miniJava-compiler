@@ -318,6 +318,8 @@ let build_static_attrs heap heap_size classes_descriptor methods_table =
 	Hashtbl.iter iterate classes_descriptor;
 	static_attrs
 
+(* Evaluate an expression tree, using the classes descriptors and methods table built at compilation.
+	It returns a list of strings, with each string being the evaluation of a top expression of the tree. *)
 let eval typed_tree classes_descriptor methods_table = 
 	let heap = Hashtbl.create heap_default_size
 	and heap_size = ref 0
@@ -330,6 +332,7 @@ let eval typed_tree classes_descriptor methods_table =
 				| TypedExpr e -> 
 					let addr_e = eval_expr heap heap_size (Hashtbl.create 0) static_attrs classes_descriptor methods_table None None e
 					in (string_of_evaluated_expr heap addr_e)::(rec_eval q)
+
 					(* We don't evaluate classes, only expressions *)
 				| _ -> rec_eval q
 			)

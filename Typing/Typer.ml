@@ -1,7 +1,7 @@
 (* A word about static methods: they are NOT put in the methods environment 
 	of a daughter class, because there is no such thing as a redefinition of 
-	a static method. Static methods MUST only be called with : A.m(). a.m(), 
-	with a being an instance of A and m a static method, will be rejected. 
+	a static method. Static methods MUST only be called with : A.m(). 
+	a.m(), with a being an instance of A and m a static method, will be rejected. 
 	In the same way, only the static attributes can be seen in a static method.
 	Yet, a normal method can see static attributes. Also, static attributes are not
 	copied in a daughter class. *)

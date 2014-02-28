@@ -53,9 +53,11 @@ let add_heritage_structures classes_descriptors methods_table =
 	Hashtbl.iter add_heritage_structure classes_descriptors
 
 
-(* This function builds the methods and attributes definition environments of a class. 
-	Classname is here the name-string of the class the method or attr belongs to *)
-(* It returns a list of methodType and a list of varType *)
+(* This function builds the methods and attributes descriptors of a class *)
+(* class_descriptor is the class descriptor to which we add attributs and methods descriptors. *)
+(* methods_table is the global methods' table. *)
+(* l_methods_attrs is the list of typed methods and attributs defined in the class. *)
+(* This function returns Unit, since it only modifies the two first parameters. *)
 let rec build_attrs_and_methods_descriptors class_descriptor methods_table l_methods_attrs = 
 
 	let _add_method_to_descriptor m = 
@@ -91,9 +93,8 @@ let rec build_attrs_and_methods_descriptors class_descriptor methods_table l_met
 		build_attrs_and_methods_descriptors class_descriptor methods_table q
 
 
-(* Change the class environment and add the methods and attributs defined in the classes, but not in their parents.
-	Also, check if parents are defined.
-	We don't check here if names of attributes or methods are not used twice. *)
+
+(* Create new classes descriptors, but without methods and attributes for the moment. *)
 let rec build_descriptors_1 classes_descriptors methods_table tree =
 	match tree with
 	| [] -> ()

@@ -9,7 +9,6 @@ type varType = {
 	loc: Location.t;
 }
 
-(* Do we need location info ? Don't add it for now *)
 type methodType = {
 	name : string;
 	mutable return : string;
